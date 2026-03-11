@@ -1,634 +1,334 @@
-# MargDarshak — AI Travel Intelligence Platform
+# MargDarshak
 
-> **Real-time AI-powered urban mobility assistant for Indian cities.**
-> Ask in plain language. Get transport comparisons, safety alerts, eco scores, weather context, SOS emergency, and explainable AI decisions — instantly.
+> AI-powered travel assistant for Indian urban commuters. Ask in plain language, get transport options with safety context, eco scores, and route reasoning.
 
----
-
-## Table of Contents
-
-1. [Project Overview](#1-project-overview)
-2. [Problem Statement](#2-problem-statement)
-3. [Solution Overview](#3-solution-overview)
-4. [Key Features](#4-key-features)
-5. [System Architecture](#5-system-architecture)
-6. [Tech Stack](#6-tech-stack)
-7. [AI Workflow](#7-ai-workflow)
-8. [Folder Structure](#8-folder-structure)
-9. [Local Setup](#9-local-setup)
-10. [Environment Variables](#10-environment-variables)
-11. [API Integrations](#11-api-integrations)
-12. [Deployed Link](#12-deployed-link)
-13. [Future Roadmap](#13-future-roadmap)
-14. [Impact](#14-impact)
+**Live demo:** https://pih-2026-nexus.vercel.app
 
 ---
 
-## 1. Project Overview
+## What it does
 
-**MargDarshak** (Hindi: *मार्गदर्शक* — "the one who shows the path") is a city-aware AI travel assistant built for Indian urban commuters and travelers. It goes beyond simple directions — it reasons about your journey using real-time weather, AQI, safety scores, peak-hour traffic, transport costs, eco impact, and crowd levels, then explains *why* it chose a particular route.
+MargDarshak takes a natural language travel query — *"How do I get from Andheri to BKC?"* — and responds with a ranked comparison of transport options (walk, bus, train, metro, auto, cab), each annotated with estimated cost, duration, safety score, and CO₂ emissions. It explains why it picked the best option and surfaces relevant context: current weather, AQI, and time-of-day safety considerations.
 
-The platform is designed for the complexity of Indian cities: fragmented transport networks (local trains, metro, BEST buses, autos), high-pollution zones, inconsistent safety conditions, and highly variable commute times.
-
----
-
-## 2. Problem Statement
-
-Indian urban travel is uniquely complex:
-
-- **Fragmented transport**: A single journey may involve walking, a local train, a metro interchange, and a final auto ride.
-- **No unified intelligence**: Existing apps give directions — they don't reason about safety, air quality, crowd levels, eco impact, or cost efficiency simultaneously.
-- **Context-blind recommendations**: Most apps don't adjust for night-time safety risks, peak-hour rush, or real-time weather.
-- **No explainability**: Users are told *what* to do, never *why*.
-- **No emergency infrastructure**: No one-tap SOS with location sharing built into a travel assistant.
-
-MargDarshak solves all of these problems in a single, AI-native interface.
+Built specifically for Mumbai's transport complexity — fragmented local trains, multiple metro lines, BEST buses, and inconsistent safety conditions — with intent to extend to other Indian metros.
 
 ---
 
-## 3. Solution Overview
+## Features
 
-MargDarshak is a React-based single-page application that:
+### AI Chat
+- Natural language queries in English (Hindi-flavored queries partially supported)
+- Intent classification across 6 types: `route`, `sightseeing`, `food`, `budget`, `safety`, `quick_trip`
+- Groq (`llama-3.3-70b-versatile`) returns structured JSON — places, budget estimates, tips, transport options
+- Chat history persisted to Supabase, restored on next session
 
-1. Accepts a natural language travel query (e.g., *"How do I get from Andheri to BKC?"*)
-2. Classifies the intent (route, sightseeing, food, budget, safety, quick trip)
-3. Fetches real-time weather + AQI data for the user's location
-4. Computes transport options across Walk, Cab, Bus, Train, Auto, and Metro
-5. Evaluates each option against safety zones, peak hours, crowd levels, cost, and CO₂ emissions
-6. Selects the best option algorithmically and generates a human-readable explanation
-7. Provides eco travel scores, smart suggestions, and a natural-language journey narration
-8. Offers one-tap SOS emergency with GPS coordinates, reverse-geocoded address, and audio alert
-9. Caches AI responses, weather data, and route intel for offline access
-10. Persists all interactions to Supabase for history, saved trips, and analytics
+### Transport Options
+- **6 modes**: Walk, Cab, Auto, Bus, Local Train, Metro
+- Mumbai-specific data: 85 BEST bus stops across 42 routes, Mumbai Metro Lines 1/2A/2B/7/7A/3 with real station data, Western and Central Railway local trains
+- Best-route selection: minimises `cost + (duration_minutes / 60)` with a metro preference bonus for 5–25 km trips
+- Walk excluded from best-pick beyond 2 km
 
----
+### Context Layers
+- **Weather + AQI** via Open-Meteo — temperature, conditions, rain probability, air quality (1–5 scale)
+- **Safety zones** — 61 Mumbai zones with scores (1–10); scores reduced by 2 after 10 PM for zones flagged `nightRisk: true`
+- **Eco scoring** — per-mode CO₂ factors (g/km): Walk 0, Metro 15, Train 20, Bus 30, Auto 80, Cab 120
+- Weather and safety data injected into every AI request prompt
 
-## 4. Key Features
+### Route Reasoning
+- "Why this route?" panel — human-readable reasons comparing the selected option against alternatives (time saved, cost difference, AQI context, peak-hour status, safety score)
+- "Explain my journey" — animated word-by-word narration of the selected route
 
-### Authentication & Auth-Aware Navigation
-- **Clerk Auth** — Google OAuth + Email OTP login
-- Protected dashboard routes — unauthenticated users are redirected to sign-in
-- User profile synced to Supabase on first login
-- **Auth-aware landing page** — all CTAs and product preview cards detect Clerk auth state:
-  - Not authenticated → redirects to sign-in
-  - Authenticated → navigates to `/app` dashboard
-- Navbar shows **LOGIN** when signed out, **DASHBOARD** button + user avatar when signed in
-
-### AI Travel Assistant
-| Capability | Details |
-|---|---|
-| Natural language queries | Plain English/Hindi-flavored queries supported |
-| Intent classification | 6 intent types: `sightseeing`, `food`, `budget`, `safety`, `quick_trip`, `route` |
-| Structured responses | AI returns typed JSON: places, budget, tips, transport options |
-| Intent badges | Visual badge on each message showing detected intent |
-| Chat history | Persisted to Supabase; restored on next session |
-| Smart suggestions | 4-section contextual panel: quick actions, local tips, safety alerts, budget hacks |
-
-### Transport Intelligence
-| Mode | Details |
-|---|---|
-| Walk | Recommended only for distances < 3 km |
-| Cab / Auto | Ola/Uber pricing: ₹30 base + ₹12–15/km |
-| Bus | Real Mumbai BEST data — 85 stops, 42 routes; boarding ≠ alighting guaranteed |
-| Train | Western & Central Railway local trains with boarding/destination stations |
-| Metro | Mumbai Lines 1, 2A, 2B, 7, 7A, 3 — real station data, interchange pathfinding |
-
-**Best-route algorithm**: Minimizes `cost + (duration / 60)` with metro bonus for 5–25 km range. Walk excluded from best-pick beyond 2 km.
-
-### Eco Travel Score
-- **Per-mode CO₂ emissions** calculated using scientifically-grounded factors (g/km):
-  - Walk: 0 | Metro: 15 | Train: 20 | Bus: 30 | Auto: 80 | Cab: 120
-- **Green eco badges** on transport cards for modes with CO₂ < 25 g/km
-- **CO₂ savings bar** comparing each mode's emissions against the highest-emitting option (cab)
-- Client-side `enrichWithEco()` function parses AI duration strings → estimates distance → calculates eco scores
-- Eco stat row displayed in RoutePanel with savings percentage
-
-### Explainable AI — "Why This Route?"
-After the best option is selected, a reasoning panel generates human-readable explanations:
-- *"18 minutes faster than Walk"*
-- *"Saves ₹150 compared to alternatives"*
-- *"Better air quality — enclosed transit avoids outdoor pollution (AQI: Moderate)"*
-- *"Avoids road traffic during peak hours"*
-- *"High safety score (9/10)"*
-
-### Journey Explainer
-- **"EXPLAIN MY JOURNEY"** button generates a natural-language narration of the selected transport option
-- `buildNarration()` constructs a human-readable journey explanation from transport data (mode, origin, destination, duration, cost, boarding/alighting, safety tips)
-- **Word-by-word animated narration** with blinking cursor and progress bar
-- Appears after WhyThisRoute in the transport reveal sequence
-
-### Smart Suggestions
-- AI returns a `smartSuggestions` JSON schema alongside transport data
-- **4-section suggestion panel**: Quick Actions, Local Tips, Safety Alerts, Budget Hacks
-- Staggered fade-in animation per section
-- Contextual to the user's query and location
-
-### Environment Intelligence
-- **Weather**: Temperature, conditions, humidity, wind speed via Open-Meteo
-- **AQI**: Air quality index (1–5 scale) with label and color coding
-- **Rain probability**: Hourly precipitation % — surfaced in the weather badge
-- **Context injection**: Weather data is injected into every AI request, enabling context-aware advice
-- **Supabase logging**: Every weather fetch is saved to `environment_logs` for historical analysis
-
-### Safety Intelligence
-- **61 Mumbai zones** with real coordinates and safety scores (1–10)
-- **Night penalty**: After 10 PM, zones with `nightRisk: true` have scores reduced by 2
-- **Per-mode adjustments**: Walk penalised in low-safety zones; cab/metro rewarded at night
-- **Safety badge**: Displayed on every transport card (green ≥ 8, amber ≥ 5, red < 5)
-- **AI reasoning**: Safety context injected into AI system prompt
-
-### SOS Emergency System
-- **Floating red SOS button** — always visible on the dashboard
-- **One-tap emergency panel** with:
-  - GPS coordinates with 3-tier fallback (GPS → last-known → cache → Delhi default)
-  - Reverse-geocoded human-readable address via Nominatim
-  - **Copy Message** — pre-built emergency message with location, timestamp, and user details
-  - **Call 112** — direct emergency services dial link
-  - **Open Maps** — opens Google Maps at the user's coordinates
-  - **Play Alert** — Web Audio API generates 3 high-frequency alert beeps (800 Hz, 200ms)
-  - **AI Safety Guidance** — Groq-powered contextual safety advice based on the user's location
-- All SOS triggers are logged to Supabase `sos_logs` table with coordinates, address, and timestamp
-- **Works offline** — GPS and alert sound function without connectivity
+### SOS
+- Floating button, always visible on dashboard
+- GPS with 3-tier fallback (live GPS → last known → cached → Delhi default)
+- Reverse-geocoded address via Nominatim
+- Pre-built emergency message (copy to clipboard), direct 112 dial link, Google Maps link
+- Audio alert via Web Audio API (3 beeps at 800 Hz)
+- AI safety guidance for the user's current location
+- All triggers logged to Supabase `sos_logs`
+- GPS and audio work offline
 
 ### Saved Trips
-- **Save Route** button on every transport card — persists trip details to Supabase `saved_trips` table
-- **SavedRoutes panel** — collapsible sidebar showing all bookmarked trips with mode, origin, destination, and date
-- **Click-to-reload** — clicking a saved trip re-executes the original query via `pendingQuery` prop system
-- **Delete** — remove saved trips with confirmation
-- Full CRUD operations: `saveTrip()`, `getSavedTrips()`, `deleteSavedTrip()` in supabaseClient.js
+- Save any transport card to Supabase `saved_trips`
+- Collapsible sidebar; click a saved trip to re-run the query
+- Full CRUD: save, list, delete
 
-### Offline Fallback Mode
-- **offlineCache.js** — localStorage-based cache with per-category TTLs:
-  - AI responses: 2 hours
-  - Weather data: 30 minutes
-  - Route intel: 1 hour
-- **Automatic cache read/write** integrated into `aiService.js`, `weatherService.js`, and `routeService.js`
-- **Offline detection** — `navigator.onLine` + event listeners + 3-second polling in DashboardPage
-- **Red OFFLINE badge** displayed in the dashboard status bar when connectivity is lost
-- Cached responses served transparently — users can still see their last AI response, weather, and routes
+### Offline Mode
+- localStorage cache with TTLs: AI responses (2h), weather (30min), route intel (1h)
+- Offline detection via `navigator.onLine` + polling
+- Cached data served transparently when offline; red badge in status bar
 
-### Dashboard UX
-- **Live Decision Mode**: 8-step animated AI reasoning sequence shown while the AI processes
-- **Staggered card reveal**: Transport cards animate in sequentially; best card glows
-- **Animated background**: CSS-only gradient, noise texture, floating orbs, scan line, grid overlay (hidden on mobile for performance)
-- **6 status indicators**: AUTH, DATABASE, AI ENGINE, WEATHER, MAPS, ROUTES — live state
-- **Interactive map**: Leaflet.js dark tiles (CartoDB Dark Matter), user pin, place markers, route polyline
-- **Professional icon system**: All emoji/cartoonish icons replaced with geometric Unicode symbols:
-  - Intent icons: ◈ ◇ ▣ ◉ ▸ ◆
-  - Safety: ◉ | Eco: ◇ | Peak warning: ▲ | Save route: ☆
-  - Transport modes: ■ ◆ ▣ ◈ ○ ▸
+### Authentication
+- Clerk — Google OAuth and Email OTP
+- Dashboard protected; unauthenticated users redirected to sign-in
+- Clerk user synced to Supabase `users` on first login
+- Navbar adapts: LOGIN when signed out, DASHBOARD + avatar when signed in
 
-### Mobile-First Responsive Design
-The entire UI is built mobile-first for 360px–430px phones while preserving the full desktop experience:
+### PWA
+- Installable on Android and iOS from the browser
+- Workbox service worker (`generateSW` mode) — 12 static assets precached
+- Runtime caching: map tiles and fonts (CacheFirst), Clerk auth (NetworkFirst)
+- Custom install prompt component, auto-hides after install or in standalone mode
 
-| Layer | Approach |
-|---|---|
-| **Breakpoint** | Primary: 768px — all layouts adapt below this |
-| **Typography** | `clamp()` fluid scaling on all headlines, stats, and CTAs |
-| **Grids** | `repeat(auto-fit, minmax(…))` — columns collapse naturally with no media-query hacks |
-| **Touch targets** | Minimum 44px tap areas on all interactive elements |
-| **Navigation** | 3-bar hamburger → X close animation → fullscreen overlay menu on mobile |
-| **Performance** | Heavy BG effects (orbs, scan line, noise texture) hidden on mobile via CSS |
-| **Cursor** | Custom cursor hidden on touch devices via `@media (hover: none)` |
-| **Animations** | Reduced `transform` intensity (60–80px → 24px) on mobile for smoother rendering |
-| **Safe areas** | `env(safe-area-inset-bottom)` support for notched/gesture-nav devices |
-| **Touch feedback** | `[data-hover]:active` → subtle opacity + scale pulse on tap |
-| **Map** | Height scales from 280px to 400px via `clamp()` |
-
-**Components with specific mobile adaptations:**
-- Navbar: hamburger menu with fullscreen overlay, auto-close on resize
-- HeroSection: hidden VortexText/GridBackground, full-width CTA buttons, grid-based stats
-- StatsSection: 2-per-row grid on mobile (CSS class hook)
-- WorkSection / IntroSection / ContactSection: single-column auto-fit grids
-- Footer: stacked layout via CSS class hooks
-- DashboardPage: reduced padding, responsive status grid, safe-area bottom
-- AIChat / IntentInput: reduced button padding to prevent horizontal overflow
-- LocationBar: flex-based input width (no fixed pixels)
-- WeatherBadge: flex-wrap on PM2.5/PM10 row
-- RoutePanel: flex-wrap on station chains, reduced stat gaps
-- SmartSuggestions: flex-wrap on attraction/food rows
-- MapView: responsive height via `clamp(280px, 50vw, 400px)`
-- FeatureCard: reduced padding for tighter mobile cards
-
-### Progressive Web App (PWA)
-- Installable on any Android or iOS device directly from the browser — no app store required
-- Service worker auto-generated by **Workbox** (`generateSW` mode, `autoUpdate` registration)
-- 12 static assets precached on first load for instant repeat visits
-- **Runtime caching strategies**:
-  - CartoDB map tiles → CacheFirst, 30-day expiry
-  - Google Fonts → CacheFirst, 1-year expiry
-  - Leaflet CDN assets → CacheFirst, 30-day expiry
-  - Clerk auth requests → NetworkFirst (always tries live)
-- Custom **PWAInstallPrompt** component shows a yellow install button on `beforeinstallprompt`; auto-hides in standalone mode and after install
-- App icons: 192×192 (any purpose) + 512×512 (maskable), theme `#C6FF00`, background `#000`
-
-### Android App (TWA — Trusted Web Activity)
-- Native Android APK wrapping the deployed PWA via Google's **Bubblewrap CLI** — no React Native, no code rewrite
-- Package: `com.margdarshak.app` | minSdk: **21** | targetSdk: **34** | androidbrowserhelper: **2.6.2**
-- **Digital Asset Links** verified at `/.well-known/assetlinks.json` — Chrome shows no browser UI inside the app
-- Signed release APK: `app-release-signed.apk` **(1.04 MB)** + AAB bundle for Play Store
-- Full MargDarshak feature set runs natively: AI chat, live maps, SOS, offline cache, saved trips
-
-### Landing Page
-- **Auth-aware buttons**: "GET CONNECTED" and product preview cards detect Clerk auth state
-- **Accurate feature cards**: 8 feature cards reflecting only implemented capabilities (AI Chat, Live Location, Smart Transport, Weather + AQI, Safety Intelligence, SOS Emergency, Eco Travel Score, Offline Mode)
-- **Real metrics**: Stats section shows actual product stats (6 Transport Modes, 61 Safety Zones, 5 Live APIs, 100% Offline Ready)
-- **Updated skill tags**: "AI ENGINE +", "MULTI-MODAL +", "SAFETY + SOS +", "LIVE DATA +"
-- **Fully responsive**: All sections adapt to mobile viewports — stacked grids, fluid typography, touch-friendly CTAs
+### Android (TWA)
+- Signed APK built via Bubblewrap CLI wrapping the deployed PWA — no React Native
+- Package: `com.margdarshak.app` | minSdk 21 | targetSdk 34
+- Digital Asset Links at `/.well-known/assetlinks.json` — no browser chrome in-app
+- APK size: ~1 MB
 
 ---
 
-## 5. System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        BROWSER CLIENT                           │
-│                                                                 │
-│  ┌─────────────┐   ┌──────────────┐   ┌────────────────────┐  │
-│  │   Clerk     │   │  React SPA   │   │   Leaflet Maps     │  │
-│  │   Auth      │──▶│  (Vite 5)    │──▶│  (CartoDB tiles)   │  │
-│  └─────────────┘   └──────┬───────┘   └────────────────────┘  │
-│                            │                                    │
-│          ┌─────────────────┼──────────────────┐                │
-│          ▼                 ▼                  ▼                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐ │
-│  │ intentClassi-│  │  aiService   │  │   routeService       │ │
-│  │ fier.js      │  │  (Groq AI)   │  │  + metroService      │ │
-│  │ 6 intent     │  │  llama-3.3   │  │  + busService        │ │
-│  │ types        │  │  -70b        │  │  + safetyService     │ │
-│  └──────────────┘  └──────────────┘  │  + ecoScoreService   │ │
-│                                       └──────────────────────┘ │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────────┐                │
-│  │  weatherService  │  │  explainRouteService │                │
-│  │  Open-Meteo API  │  │  Reasoning engine    │                │
-│  │  AQI + Rain      │  │  ETA / cost / AQI    │                │
-│  └──────────────────┘  └──────────────────────┘                │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────────┐                │
-│  │  offlineCache.js │  │  sosService.js       │                │
-│  │  localStorage    │  │  GPS + SOS + Audio   │                │
-│  │  TTL cache layer │  │  Emergency system    │                │
-│  └──────────────────┘  └──────────────────────┘                │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-              ┌───────────────────────────────┐
-              │         SUPABASE              │
-              │  users · trips · ai_history   │
-              │  intents · environment_logs   │
-              │  saved_trips · sos_logs       │
-              └───────────────────────────────┘
-
-              ┌───────────────────────────────┐
-              │   OPENROUTESERVICE (ORS)       │
-              │   Real road distance + geom    │
-              │   Haversine fallback if down   │
-              └───────────────────────────────┘
-```
-
----
-
-## 6. Tech Stack
+## Tech Stack
 
 | Layer | Technology | Version |
 |---|---|---|
 | Frontend | React | 18.2.0 |
-| Build tool | Vite | 5.0.0 |
+| Build | Vite | 5.0.0 |
 | Routing | React Router DOM | 7.13.1 |
-| Authentication | Clerk | 5.61.3 |
+| Auth | Clerk | 5.61.3 |
 | Database | Supabase (PostgreSQL) | 2.98.0 |
-| AI Model | Groq — `llama-3.3-70b-versatile` | — |
+| AI | Groq — `llama-3.3-70b-versatile` | — |
 | Maps | React Leaflet + Leaflet.js | 4.2.1 / 1.9.4 |
-| Weather / AQI | Open-Meteo API | Free tier |
-| Geocoding | Nominatim (OpenStreetMap) | Free |
-| Routing distance | OpenRouteService | Free tier |
+| Weather / AQI | Open-Meteo | Free, no key |
+| Geocoding | Nominatim | Free, no key |
+| Road distance | OpenRouteService | Free tier |
 | Icons | Lucide React | 0.575.0 |
-| Styling | CSS-in-JS (inline styles) + global CSS | — |
-| Responsive | CSS media queries + `clamp()` + `auto-fit` grids | 768px breakpoint |
-| PWA | vite-plugin-pwa (Workbox generateSW) | 1.24.1 |
-| Android App | Bubblewrap TWA (`@bubblewrap/cli`) | 1.24.1 |
+| Styling | Inline styles + global.css | No framework |
+| PWA | vite-plugin-pwa (Workbox) | 1.24.1 |
+| Android | Bubblewrap CLI | 1.24.1 |
 
-No Tailwind. All styles are hand-crafted inline or in `global.css` for full design control. Responsive behaviour uses CSS media queries in `global.css` with className hooks on components, plus responsive inline styles (`clamp()`, `auto-fit` grids, `flexWrap`).
+No Tailwind or component libraries. Responsive behaviour via CSS media queries in `global.css`, `clamp()` for fluid typography, and `auto-fit` grids.
 
 ---
 
-## 7. AI Workflow
+## Architecture
 
 ```
-User types query
-      │
-      ▼
+Browser (React SPA — Vite 5)
+│
+├── Clerk Auth
+├── React Leaflet (CartoDB Dark Matter tiles)
+│
+├── intentClassifier.js     — keyword matching, 6 intent types, confidence score
+├── aiService.js            — Groq API wrapper, JSON mode, offline cache
+├── routeService.js         — ORS + haversine fallback, mode builder, best-pick algo
+├── metroService.js         — Mumbai metro station data, interchange pathfinding
+├── busService.js           — 85 BEST stops, 42 routes, fare calculation
+├── safetyService.js        — zone scoring, night penalties, per-mode adjustments
+├── ecoScoreService.js      — CO₂ calculation, eco labels
+├── weatherService.js       — Open-Meteo: weather, AQI, rain probability
+├── explainRouteService.js  — reasoning engine: ETA/cost/AQI/safety comparisons
+├── sosService.js           — GPS fallback chain, reverse geocode, audio alert
+├── offlineCache.js         — localStorage TTL cache
+└── supabaseClient.js       — CRUD helpers for all 7 tables
+│
+└── Supabase (PostgreSQL + RLS)
+    users · ai_history · intents · environment_logs
+    saved_trips · sos_logs · trips
+```
+
+---
+
+## AI Workflow
+
+```
+User query
+    │
+    ▼
 intentClassifier.js
-  → keyword matching against 6 intent types
-  → confidence scoring (0–1)
-  → buildIntentPrompt() generates mode-specific instructions
-      │
-      ▼
-askMargDarshak() — aiService.js
-  → Injects: system prompt + location context + weather context + intent context
-  → Sends to Groq API (llama-3.3-70b-versatile, JSON mode)
-  → Returns typed JSON:
-      {
-        places[], estimatedBudget, bestTime, tips[],
-        summary, detectedIntent, transportOptions[],
-        smartSuggestions { quickActions[], localTips[],
-                          safetyAlerts[], budgetHacks[] }
-      }
-      │
-      ▼
-enrichWithEco() — client-side
-  → Parses AI duration strings → estimates distance (km)
-  → Calculates CO₂ per mode using emission factors
-  → Attaches ecoScore, co2PerKm, ecoLabel to each transport option
-      │
-      ▼
-TransportReveal component
-  → Staggered card animation with eco badges + safety scores
-  → Best card auto-highlighted
-      │
-      ▼
-explainBestRoute() — explainRouteService.js
-  → Compares best option against all alternatives
-  → Generates reasons[] using: ETA diff, cost diff, AQI, peak hours,
-    crowd level, safety score, rain probability
-      │
-      ▼
-WhyThisRoute → JourneyExplainer → SmartSuggestions
-  → WhyThisRoute: ✓ checkmark list of AI reasoning
-  → JourneyExplainer: word-by-word animated narration of the journey
-  → SmartSuggestions: 4-section contextual advice panel
+    — keyword matching → intent type + confidence (0–1)
+    — buildIntentPrompt() → mode-specific system instructions
+    │
+    ▼
+aiService.js → Groq API
+    — prompt includes: system context, location, weather, intent
+    — returns typed JSON: places[], budget, tips[], transportOptions[], smartSuggestions{}
+    │
+    ▼
+enrichWithEco() (client-side)
+    — parses duration string → distance estimate → CO₂ per mode
+    │
+    ▼
+explainRouteService.js
+    — compares best option vs. alternatives
+    — generates reasons[]: time diff, cost diff, AQI context, peak hours, safety score
+    │
+    ▼
+UI render: TransportReveal → WhyThisRoute → JourneyExplainer → SmartSuggestions
 ```
 
-**Intent types and their effects:**
+**Intent types:**
 
-| Intent | Trigger keywords | AI mode |
+| Intent | Example keywords | AI behaviour |
 |---|---|---|
-| `sightseeing` | monument, tourist, visit, heritage... | Recommends tourist spots with costs & timings |
-| `food` | restaurant, eat, biryani, chai, street food... | Street food + restaurant breakdown in INR |
-| `budget` | cheap, affordable, save money, budget... | Cost breakdown + money-saving tips |
-| `safety` | safe, night, solo, women, avoid... | Safety ratings + emergency contacts |
-| `quick_trip` | quick, layover, 2 hours, half day... | Top 2–3 clustered spots only |
-| `route` | how to reach, metro, station, train, bus... | Full transport analysis with all modes |
+| `route` | metro, station, train, bus, how to reach | Full transport comparison |
+| `sightseeing` | tourist, visit, monument, heritage | Places with costs and timings |
+| `food` | restaurant, eat, biryani, street food | Food spots with INR breakdown |
+| `budget` | cheap, affordable, save money | Cost-focused tips |
+| `safety` | safe, night, solo, women | Safety ratings and contacts |
+| `quick_trip` | quick, layover, 2 hours | Top 2–3 nearby spots |
 
 ---
 
-## 8. Folder Structure
+## Folder Structure
 
 ```
 client/
 ├── index.html
 ├── package.json
-├── vite.config.js                   # VitePWA plugin: manifest, Workbox, runtime caching
+├── vite.config.js              # VitePWA, Workbox config
 ├── .env.example
 │
 ├── public/
-│   ├── icon-192.png                 # PWA icon 192×192 (any)
-│   ├── icon-512.png                 # PWA icon 512×512 (maskable)
+│   ├── icon-192.png
+│   ├── icon-512.png
 │   └── .well-known/
-│       └── assetlinks.json          # Digital Asset Links for TWA verification
+│       └── assetlinks.json     # TWA Digital Asset Links
 │
 ├── supabase/
 │   └── migrations/
-│       └── full_schema.sql          # All 7 tables + RLS policies
+│       └── full_schema.sql     # All 7 tables + RLS policies
 │
 └── src/
-    ├── main.jsx                     # App entry, Clerk provider, ErrorBoundary
-    ├── App.jsx                      # Route definitions
-    │
-    ├── constants/
-    │   └── theme.js                 # Y="#CCFF00", BK="#000", WH="#fff"
-    │
-    ├── data/
-    │   └── safetyZones.json         # 61 Mumbai zones with safety scores
+    ├── main.jsx                # App entry, Clerk provider, ErrorBoundary
+    ├── App.jsx                 # Routes
+    ├── constants/theme.js      # Y="#CCFF00", BK="#000", WH="#fff"
+    ├── data/safetyZones.json   # 61 Mumbai zones
     │
     ├── hooks/
-    │   ├── useClerkAvailable.jsx    # Clerk availability context
-    │   ├── useGeolocation.js        # GPS + reverse geocoding + manual override
-    │   ├── useInView.js             # Intersection observer hook
-    │   └── useUserSync.js           # Sync Clerk user to Supabase users table
+    │   ├── useClerkAvailable.jsx
+    │   ├── useGeolocation.js
+    │   ├── useInView.js
+    │   └── useUserSync.js
     │
-    ├── utils/
-    │   └── offlineCache.js          # localStorage cache with per-category TTLs
+    ├── utils/offlineCache.js
     │
     ├── services/
-    │   ├── aiService.js             # Groq API wrapper, system prompt, JSON mode, offline cache
-    │   ├── busService.js            # 85 Mumbai BEST stops, 42 routes, fare calc
-    │   ├── ecoScoreService.js       # CO₂ factors per mode, calculateEcoScore(), attachEcoScores()
-    │   ├── environmentService.js    # Weather+AQI wrapper + Supabase logging
-    │   ├── explainRouteService.js   # Explainable AI reasoning engine
-    │   ├── intentClassifier.js      # 6-intent keyword classifier, confidence scoring
-    │   ├── metroService.js          # Mumbai metro data, interchange pathfinding
-    │   ├── routeService.js          # ORS + haversine, mode builder, best-pick algo, offline cache
-    │   ├── safetyService.js         # Zone-based safety scoring, night penalties
-    │   ├── sosService.js            # GPS fallback, reverse geocode, emergency message, audio alert, AI safety guidance
-    │   ├── supabaseClient.js        # All Supabase CRUD (users, trips, AI history, saved trips, SOS logs)
-    │   └── weatherService.js        # Open-Meteo: weather, AQI, rain probability, offline cache
+    │   ├── aiService.js
+    │   ├── busService.js
+    │   ├── ecoScoreService.js
+    │   ├── environmentService.js
+    │   ├── explainRouteService.js
+    │   ├── intentClassifier.js
+    │   ├── metroService.js
+    │   ├── routeService.js
+    │   ├── safetyService.js
+    │   ├── sosService.js
+    │   ├── supabaseClient.js
+    │   └── weatherService.js
     │
     ├── components/
-    │   ├── AIChat.jsx               # Main AI chat interface, transport cards, eco enrichment, all panels
-    │   ├── Cursor.jsx               # Custom animated cursor
-    │   ├── FeatureCard.jsx          # Landing page feature block
-    │   ├── Footer.jsx               # Site footer
-    │   ├── IntentInput.jsx          # Intent query input + history display
-    │   ├── JourneyExplainer.jsx     # Animated word-by-word journey narration
-    │   ├── LocationBar.jsx          # Location display + manual city override
-    │   ├── MapView.jsx              # Leaflet map, dark tiles, markers, polyline
-    │   ├── NavAuthButtons.jsx       # Auth-aware nav buttons (LOGIN / DASHBOARD + UserButton)
-    │   ├── Navbar.jsx               # Top navigation bar with auth-aware fallback
-    │   ├── ProtectedRoute.jsx       # Auth guard component    │   ├── PWAInstallPrompt.jsx     # PWA install button (beforeinstallprompt, hides in standalone)    │   ├── RoutePanel.jsx           # Route comparison panel with mode cards + eco stats
-    │   ├── SavedRoutes.jsx          # Saved trips panel with click-to-reload
-    │   ├── SmartSuggestions.jsx     # 4-section AI suggestion panel
-    │   ├── SOSButton.jsx            # Floating SOS button + full-screen emergency panel
-    │   ├── Ticker.jsx               # Scrolling text ticker
-    │   ├── WeatherBadge.jsx         # Weather + AQI + rain probability display
-    │   └── WhyThisRoute.jsx         # Explainable AI "Why this route?" panel
+    │   ├── AIChat.jsx
+    │   ├── Cursor.jsx
+    │   ├── FeatureCard.jsx
+    │   ├── Footer.jsx
+    │   ├── IntentInput.jsx
+    │   ├── JourneyExplainer.jsx
+    │   ├── LocationBar.jsx
+    │   ├── MapView.jsx
+    │   ├── NavAuthButtons.jsx
+    │   ├── Navbar.jsx
+    │   ├── ProtectedRoute.jsx
+    │   ├── PWAInstallPrompt.jsx
+    │   ├── RoutePanel.jsx
+    │   ├── SavedRoutes.jsx
+    │   ├── SmartSuggestions.jsx
+    │   ├── SOSButton.jsx
+    │   ├── Ticker.jsx
+    │   ├── WeatherBadge.jsx
+    │   └── WhyThisRoute.jsx
     │
     ├── pages/
-    │   ├── DashboardPage.jsx        # Main app dashboard (offline detection, saved routes, SOS)
-    │   ├── LandingPage.jsx          # Marketing landing page
-    │   ├── SignInPage.jsx           # Clerk-hosted sign in
-    │   └── SignUpPage.jsx           # Clerk-hosted sign up
+    │   ├── DashboardPage.jsx
+    │   ├── LandingPage.jsx
+    │   ├── SignInPage.jsx
+    │   └── SignUpPage.jsx
     │
-    ├── sections/                    # Landing page sections (auth-aware)
+    ├── sections/
     │   ├── ContactSection.jsx
-    │   ├── FeaturesSection.jsx      # 8 accurate feature cards
-    │   ├── HeroSection.jsx          # Auth-aware CTAs
-    │   ├── IntroSection.jsx         # Updated skill tags
-    │   ├── StatsSection.jsx         # Real product metrics
+    │   ├── FeaturesSection.jsx
+    │   ├── HeroSection.jsx
+    │   ├── IntroSection.jsx
+    │   ├── StatsSection.jsx
     │   ├── TickerSection.jsx
-    │   └── WorkSection.jsx          # Auth-aware product preview cards
+    │   └── WorkSection.jsx
     │
-    └── styles/
-        └── global.css               # Animations, keyframes, dark theme, responsive media queries
+    └── styles/global.css
 ```
 
 ---
 
-## 9. Local Setup
+## Local Setup
 
-### Prerequisites
-- Node.js 18+
-- npm 9+
-- A free account on: [Clerk](https://clerk.com), [Supabase](https://supabase.com), [Groq](https://console.groq.com), [OpenRouteService](https://openrouteservice.org)
-
-### Steps
+**Prerequisites:** Node.js 18+, npm 9+, accounts on [Clerk](https://clerk.com), [Supabase](https://supabase.com), [Groq](https://console.groq.com), [OpenRouteService](https://openrouteservice.org)
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/margdarshak.git
-cd margdarshak
-
-# 2. Install dependencies
-cd client
+git clone https://github.com/SanskarG-20/PIH2026_Nexus.git
+cd PIH2026_Nexus/client
 npm install
-
-# 3. Set up environment variables
 cp .env.example .env
-# Edit .env with your real API keys (see section below)
-
-# 4. Set up the Supabase database
-# Go to: Supabase Dashboard → SQL Editor
-# Paste and run the contents of: client/supabase/migrations/full_schema.sql
-
-# 5. Start the development server
+# fill in .env (see below)
 npm run dev
-# App runs at http://localhost:5173
+# → http://localhost:5173
 ```
+
+**Database:** paste `client/supabase/migrations/full_schema.sql` into the Supabase SQL editor and run it.
 
 ---
 
-## 10. Environment Variables
-
-Create `client/.env` with the following keys:
+## Environment Variables
 
 ```env
-# Clerk Authentication
-# Get from: https://dashboard.clerk.com → Your App → API Keys
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
-
-# Supabase
-# Get from: https://supabase.com → Project → Settings → API
 VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
-
-# Groq AI (free tier — 500 req/day on free plan)
-# Get from: https://console.groq.com → API Keys
 VITE_GROQ_API_KEY=gsk_...
-
-# OpenRouteService (free tier — 2000 req/day)
-# Get from: https://openrouteservice.org/dev/#/signup
-# Use the JWT token format (Authorization header)
 VITE_ORS_API_KEY=eyJvcmci...
 ```
 
-All keys are required for full functionality. The app degrades gracefully:
-- Missing Clerk key → auth disabled, dashboard inaccessible
-- Missing Groq key → AI chat returns config error message
-- Missing ORS key → route distances fall back to haversine calculation
-- Missing Supabase key → persistence disabled, app still functional
+Graceful degradation when keys are missing:
+- No Clerk key → auth disabled, dashboard inaccessible
+- No Groq key → AI chat returns an error message
+- No ORS key → distances fall back to haversine calculation
+- No Supabase key → persistence disabled, rest of app functional
 
 ---
 
-## 11. API Integrations
+## API Integrations
 
-| Service | Purpose | Auth | Free Tier |
+| Service | Purpose | Key required | Free tier |
 |---|---|---|---|
-| **Groq** | LLM inference (`llama-3.3-70b-versatile`) | Bearer token | 500 req/day |
-| **Supabase** | PostgreSQL database + Row Level Security | Anon key | 500 MB storage |
-| **Clerk** | Authentication (Google OAuth + Email OTP) | Publishable key | 10,000 MAU |
-| **Open-Meteo** | Weather, AQI, rain probability (hourly) | No key required | Unlimited |
-| **OpenRouteService** | Real road distance + GeoJSON geometry | JWT Bearer | 2,000 req/day |
-| **Nominatim** | Reverse + forward geocoding (GPS + SOS) | No key (User-Agent) | Fair use |
+| Groq | LLM inference | Yes | 500 req/day |
+| Supabase | PostgreSQL + RLS | Yes | 500 MB |
+| Clerk | Auth | Yes | 10,000 MAU |
+| Open-Meteo | Weather + AQI | No | Unlimited |
+| OpenRouteService | Road distance + GeoJSON | Yes | 2,000 req/day |
+| Nominatim | Geocoding | No (User-Agent) | Fair use |
 
-### Supabase Tables
-
-| Table | Purpose |
-|---|---|
-| `users` | Clerk user sync, last known location |
-| `trips` | Saved trip intents (future feature) |
-| `ai_history` | Full chat history per user |
-| `intents` | Intent query log for analytics |
-| `environment_logs` | Weather + AQI snapshots per session |
-| `saved_trips` | Bookmarked routes with mode, origin, destination, query |
-| `sos_logs` | Emergency SOS triggers with GPS coordinates, address, timestamp |
-
-All tables have Row Level Security (RLS) enabled — users can only access their own data.
+**Supabase tables:** `users`, `trips`, `ai_history`, `intents`, `environment_logs`, `saved_trips`, `sos_logs` — all with RLS enabled.
 
 ---
 
-## 12. Deployed Link
+## Roadmap
 
-> **Live URL**: [MargDarshak](https://margdarshak-2026.vercel.app/)
-
-> **PWA**: Open the URL in Chrome/Edge/Safari → tap the install prompt to add to your home screen
-
-> **Android APK**: Built via Bubblewrap TWA (`app-release-signed.apk`, 1.04 MB) — sideload or distribute via Play Store
-
----
-
-## 13. Future Roadmap
-
-### Near-term (v1.1)
-- [ ] **Delhi NCR metro** — extend metro service to Red/Yellow/Blue/Magenta lines
-- [ ] **Bangalore metro** — Purple and Green line support
-
-### Medium-term (v1.2)
-- [ ] **Real-time bus tracking** — BEST Mumbai GTFS-RT integration
-- [ ] **Multi-city safety zones** — Delhi, Bangalore, Hyderabad datasets
-- [ ] **Personalized recommendations** — learn from chat history and intent patterns
-- [ ] **Voice input** — Web Speech API for hands-free queries
-- [ ] **Multi-language support** — Hindi, Marathi, Tamil query inputs
-
-### Long-term
-- [ ] **Multi-modal trip planning** — full A→B journey with transfers across all modes
-- [ ] **Crowd-sourced safety** — user-submitted safety reports
-- [ ] **Real-time crowd density** — transit crowd level estimation
-- [ ] **Trip sharing** — share itineraries with friends/family
+- [ ] Delhi NCR and Bangalore metro data
+- [ ] BEST Mumbai GTFS-RT for live bus tracking
+- [ ] Voice input (Web Speech API)
+- [ ] Hindi / Marathi query support
+- [ ] Multi-city safety zone datasets
+- [ ] Full multi-modal trip planning (chained transfers)
+- [ ] Crowd-sourced safety incident reports
 
 ---
 
-## 14. Impact
+## Known Limitations
 
-### Innovation
-MargDarshak introduces six novel concepts to the Indian travel assistant space:
-
-**1. Explainable AI for transport** — Most apps say *"take the metro."* MargDarshak says *"take the metro — it's 18 minutes faster, saves ₹150, and avoids peak-hour road congestion."* Every recommendation is justified.
-
-**2. Multi-layered context fusion** — A single query triggers parallel evaluation across: intent classification, weather + AQI, safety zones, peak-hour detection, real transport data, eco scoring, and historical chat context. No app currently combines all of these.
-
-**3. Night-aware urban safety** — Safety scores automatically reduce after 10 PM for risky zones, and the system actively recommends safer transport modes (cab over walk, metro over bus) with reasoning.
-
-**4. Eco-conscious travel scoring** — Per-mode CO₂ emissions with green badges, savings comparisons, and environmental impact awareness baked into every route decision.
-
-**5. One-tap SOS with AI guidance** — Emergency system with GPS fallback, reverse geocoding, audio alerts, and AI-powered contextual safety advice — all accessible from a single floating button.
-
-**6. Mobile-first responsive design without a CSS framework** — Every component adapts to 360px–430px phones using hand-crafted CSS media queries, `clamp()` fluid typography, `auto-fit` grids, and touch-optimised tap targets — no Tailwind, no Bootstrap, no framework overhead.
-
-**7. Full PWA + native Android app from a single codebase** — Workbox service worker caches static assets + map tiles + fonts; custom install prompt surfaces on `beforeinstallprompt`; a Bubblewrap TWA wraps the same deployed URL into a signed Android APK (1.04 MB) with Digital Asset Links — zero duplication, one deployment.
-
-### Feasibility
-- **Fully functional today** — not a prototype. Every feature listed in this README is implemented and running.
-- **Fully responsive** — tested across 360px phones to 1440px desktops, no horizontal overflow, no broken layouts.
-- **All APIs are free-tier** — no infrastructure costs for MVP deployment.
-- **No ML training required** — intelligence comes from Groq's hosted LLM + deterministic service logic.
-- **Deployable in one click** — Vite + Vercel/Netlify compatible.
-- **Offline-resilient** — Workbox service worker + localStorage cache ensures usability without connectivity.
-- **PWA + Android** — installable as a home-screen app or sideloaded as a native APK from the same codebase.
-
-### Social Impact
-- **Target users**: 50M+ daily urban commuters across Indian metros
-- **Problem solved**: Poor, dangerous, or expensive transport choices made from lack of information
-- **Reach**: Mumbai → Delhi → Bangalore → all major metros with minimal dataset extensions
-- **Equity**: Free-tier APIs mean no paywall; accessible on any modern smartphone browser
-- **Safety**: One-tap SOS with location sharing addresses personal safety — especially for women and solo travelers
+- Transport data is Mumbai-only; other cities return generic AI estimates without real stop/station data
+- Bus and train timings are estimated, not pulled from a live schedule API
+- Safety zones are manually curated — not updated in real time
+- Groq free tier (500 req/day) can throttle under heavy usage
+- ORS free tier (2,000 req/day) falls back to straight-line haversine when exhausted
 
 ---
 
-<div align="center">
-
-**Built with ♥ for Indian urban travelers**
-
-[Live Demo](#) · [Report Bug](https://github.com/YOUR_USERNAME/margdarshak/issues) · [Request Feature](https://github.com/YOUR_USERNAME/margdarshak/issues)
-
-</div>
+*Built for PIH 2026 — Nexus track*
