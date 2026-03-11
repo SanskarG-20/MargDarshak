@@ -2,7 +2,7 @@
 
 > AI-powered travel assistant for Indian urban commuters. Ask in plain language, get transport options with safety context, eco scores, and route reasoning.
 
-**Live demo:** https://pih-2026-nexus.vercel.app
+**Live demo:** https://margdarshak-2026.vercel.app
 
 ---
 
