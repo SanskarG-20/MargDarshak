@@ -328,7 +328,3 @@ Graceful degradation when keys are missing:
 - Safety zones are manually curated — not updated in real time
 - Groq free tier (500 req/day) can throttle under heavy usage
 - ORS free tier (2,000 req/day) falls back to straight-line haversine when exhausted
-
----
-
-*Built for PIH 2026 — Nexus track*
