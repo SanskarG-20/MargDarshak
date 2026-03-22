@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import { Y, BK, WH } from "../constants/theme";
+import { isSpeechSupported, speakText, stopSpeech } from "../services/voiceService";
 
 /* ─── Natural-language journey narrator ──────────────────────────
    Takes enriched transport options + weather context and builds
@@ -134,8 +136,13 @@ export default function JourneyExplainer({ options, weather }) {
     const [open, setOpen] = useState(false);
     const [visibleWords, setVisibleWords] = useState(0);
     const [narration, setNarration] = useState("");
+    const [voiceEnabled, setVoiceEnabled] = useState(() => {
+        if (typeof window === "undefined") return true;
+        return localStorage.getItem("margdarshak_voice_enabled") !== "false";
+    });
     const timerRef = useRef(null);
     const wordsRef = useRef([]);
+    const spokenRef = useRef(false);
 
     const startNarration = useCallback(() => {
         if (open) { setOpen(false); return; }  // toggle off
@@ -161,6 +168,36 @@ export default function JourneyExplainer({ options, weather }) {
 
         return () => clearInterval(timerRef.current);
     }, [open, visibleWords]);
+
+    useEffect(() => {
+        spokenRef.current = false;
+    }, [narration]);
+
+    useEffect(() => {
+        if (!open || !narration) return;
+        if (!voiceEnabled || !isSpeechSupported()) return;
+        const totalWords = wordsRef.current.length;
+        const doneNow = visibleWords >= totalWords && totalWords > 0;
+        if (!doneNow || spokenRef.current) return;
+
+        spokenRef.current = true;
+        speakText(narration);
+    }, [open, narration, visibleWords, voiceEnabled]);
+
+    useEffect(() => {
+        if (!open) stopSpeech();
+    }, [open]);
+
+    const toggleVoiceReadback = () => {
+        setVoiceEnabled((prev) => {
+            const next = !prev;
+            if (typeof window !== "undefined") {
+                localStorage.setItem("margdarshak_voice_enabled", String(next));
+            }
+            if (!next) stopSpeech();
+            return next;
+        });
+    };
 
     const allWords = wordsRef.current;
     const displayText = allWords.slice(0, visibleWords).join(" ");
@@ -215,16 +252,43 @@ export default function JourneyExplainer({ options, weather }) {
                         marginBottom: 10,
                         display: "flex",
                         alignItems: "center",
-                        gap: 6,
+                        justifyContent: "space-between",
                     }}>
-                        <span style={{
-                            display: "inline-block",
-                            width: 6, height: 6,
-                            background: done ? Y : "#22c55e",
-                            borderRadius: "50%",
-                            animation: done ? "none" : "ldm-blink 1s infinite",
-                        }} />
-                        {done ? "AI NARRATION COMPLETE" : "AI IS NARRATING..."}
+                        <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                        }}>
+                            <span style={{
+                                display: "inline-block",
+                                width: 6, height: 6,
+                                background: done ? Y : "#22c55e",
+                                borderRadius: "50%",
+                                animation: done ? "none" : "ldm-blink 1s infinite",
+                            }} />
+                            {done ? "AI NARRATION COMPLETE" : "AI IS NARRATING..."}
+                        </div>
+                        {isSpeechSupported() && (
+                            <button
+                                type="button"
+                                onClick={toggleVoiceReadback}
+                                aria-label="Toggle voice readback"
+                                style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: "50%",
+                                    border: `1px solid ${Y}`,
+                                    background: "transparent",
+                                    color: voiceEnabled ? Y : WH,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                            </button>
+                        )}
                     </div>
 
                     {/* Text */}

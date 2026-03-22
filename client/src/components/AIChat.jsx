@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Mic } from "lucide-react";
 import { Y, BK, WH } from "../constants/theme";
 import { askMargDarshak } from "../services/aiService";
 import { saveAIHistory, getAIHistory, saveTrip } from "../services/supabaseClient";
@@ -9,11 +10,27 @@ import WhyThisRoute from "./WhyThisRoute";
 import SmartSuggestions from "./SmartSuggestions";
 import JourneyExplainer from "./JourneyExplainer";
 
+const SpeechRecognition =
+    typeof window !== "undefined"
+        ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+        : null;
+
+const recognition = SpeechRecognition
+    ? new SpeechRecognition()
+    : null;
+
+if (recognition) {
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-IN";
+}
+
 export default function AIChat({ dbUser, onAIResponse, userLocation, weatherContext, weather, pendingQuery }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [historyLoaded, setHistoryLoaded] = useState(false);
+    const [isListening, setIsListening] = useState(false);
     const chatEndRef = useRef(null);
     const lastPendingRef = useRef(null);
 
@@ -59,6 +76,42 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
         sendQuery(pendingQuery.text || pendingQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pendingQuery]);
+
+    function startVoice() {
+        if (!recognition) return;
+
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
+
+        recognition.onresult = (event) => {
+            const idx = event.resultIndex ?? 0;
+            const result = event.results?.[idx] || event.results?.[0];
+            const transcript = result?.[0]?.transcript?.trim() || "";
+            if (!transcript) {
+                setIsListening(false);
+                return;
+            }
+            setInput(transcript);
+            setIsListening(false);
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Speech error:", event.error);
+            setIsListening(false);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        try {
+            recognition.start();
+            setIsListening(true);
+        } catch {
+            console.warn("Recognition already active");
+        }
+    }
 
     const sendQuery = async (queryText) => {
         const userMsg = queryText.trim();
@@ -287,7 +340,7 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSend} style={{ display: "flex", gap: 0 }}>
+            <form onSubmit={handleSend} style={{ display: "flex", gap: 8 }}>
                 <input
                     type="text"
                     value={input}
@@ -302,7 +355,6 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
                         color: WH,
                         background: "rgba(255,255,255,.05)",
                         border: "2px solid rgba(255,255,255,.15)",
-                        borderRight: "none",
                         outline: "none",
                         transition: "border-color .2s",
                     }}
@@ -330,6 +382,49 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
                 >
                     {loading ? "..." : "ASK AI →"}
                 </button>
+                {recognition && (
+                    <button
+                        type="button"
+                        onClick={isListening
+                            ? () => {
+                                recognition.stop();
+                                setIsListening(false);
+                            }
+                            : startVoice}
+                        aria-label="Voice input"
+                        style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: "50%",
+                            border: isListening
+                                ? "2px solid #FF3B3B"
+                                : "1.5px solid #CCFF00",
+                            background: isListening
+                                ? "rgba(255,59,59,0.15)"
+                                : "transparent",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            transition: "all 0.2s ease",
+                        }}
+                    >
+                        {isListening ? (
+                            <div
+                                style={{
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: "50%",
+                                    background: "#FF3B3B",
+                                    animation: "pulse-red 1s infinite",
+                                }}
+                            />
+                        ) : (
+                            <Mic size={16} color="#CCFF00" />
+                        )}
+                    </button>
+                )}
             </form>
         </div>
     );

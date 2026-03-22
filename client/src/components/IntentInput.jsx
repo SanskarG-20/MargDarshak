@@ -1,12 +1,29 @@
 import { useState } from "react";
+import { Mic } from "lucide-react";
 import { Y, BK, WH } from "../constants/theme";
 import { saveIntent, getIntents } from "../services/supabaseClient";
+
+const SpeechRecognition =
+    typeof window !== "undefined"
+        ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+        : null;
+
+const recognition = SpeechRecognition
+    ? new SpeechRecognition()
+    : null;
+
+if (recognition) {
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-IN";
+}
 
 export default function IntentInput({ dbUser }) {
     const [query, setQuery] = useState("");
     const [intents, setIntents] = useState([]);
     const [saving, setSaving] = useState(false);
     const [loaded, setLoaded] = useState(false);
+    const [isListening, setIsListening] = useState(false);
 
     const userId = dbUser?.id;
 
@@ -14,6 +31,42 @@ export default function IntentInput({ dbUser }) {
     if (userId && !loaded) {
         setLoaded(true);
         getIntents(userId).then(setIntents);
+    }
+
+    function startVoice() {
+        if (!recognition) return;
+
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
+
+        recognition.onresult = (event) => {
+            const idx = event.resultIndex ?? 0;
+            const result = event.results?.[idx] || event.results?.[0];
+            const transcript = result?.[0]?.transcript?.trim() || "";
+            if (!transcript) {
+                setIsListening(false);
+                return;
+            }
+            setQuery(transcript);
+            setIsListening(false);
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Speech error:", event.error);
+            setIsListening(false);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        try {
+            recognition.start();
+            setIsListening(true);
+        } catch {
+            console.warn("Recognition already active");
+        }
     }
 
     const handleSubmit = async (e) => {
@@ -64,7 +117,7 @@ export default function IntentInput({ dbUser }) {
                 onSubmit={handleSubmit}
                 style={{
                     display: "flex",
-                    gap: 0,
+                    gap: 8,
                     marginBottom: 24,
                 }}
             >
@@ -81,7 +134,6 @@ export default function IntentInput({ dbUser }) {
                         color: WH,
                         background: "rgba(255,255,255,.05)",
                         border: `2px solid rgba(255,255,255,.15)`,
-                        borderRight: "none",
                         outline: "none",
                         transition: "border-color .2s",
                     }}
@@ -111,6 +163,49 @@ export default function IntentInput({ dbUser }) {
                 >
                     {saving ? "SAVING..." : "SAVE INTENT →"}
                 </button>
+                {recognition && (
+                    <button
+                        type="button"
+                        onClick={isListening
+                            ? () => {
+                                recognition.stop();
+                                setIsListening(false);
+                            }
+                            : startVoice}
+                        aria-label="Voice input"
+                        style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: "50%",
+                            border: isListening
+                                ? "2px solid #FF3B3B"
+                                : "1.5px solid #CCFF00",
+                            background: isListening
+                                ? "rgba(255,59,59,0.15)"
+                                : "transparent",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            transition: "all 0.2s ease",
+                        }}
+                    >
+                        {isListening ? (
+                            <div
+                                style={{
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: "50%",
+                                    background: "#FF3B3B",
+                                    animation: "pulse-red 1s infinite",
+                                }}
+                            />
+                        ) : (
+                            <Mic size={16} color="#CCFF00" />
+                        )}
+                    </button>
+                )}
             </form>
 
             {/* Past intents list */}
