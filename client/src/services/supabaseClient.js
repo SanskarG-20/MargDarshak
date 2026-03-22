@@ -316,3 +316,56 @@ export async function logSOSTrigger({ userId, lat, lng, area }) {
     }
     return data;
 }
+
+/* ── Community Safety Reports ───────────────────── */
+
+export async function submitSafetyReport({ userId, lat, lng, category, description, severity }) {
+    if (!supabase) {
+        return { data: null, error: { message: "Supabase not configured" } };
+    }
+
+    const { data, error } = await supabase
+        .from("safety_reports")
+        .insert({
+            user_id: userId,
+            lat,
+            lng,
+            category,
+            description: description || null,
+            severity,
+        })
+        .select();
+
+    return { data, error };
+}
+
+export async function getActiveSafetyReports() {
+    if (!supabase) {
+        return { data: [], error: { message: "Supabase not configured" } };
+    }
+
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+        .from("safety_reports")
+        .select("*")
+        .gt("expires_at", nowIso)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+    return { data: data || [], error };
+}
+
+export async function deleteSafetyReport(reportId, userId) {
+    if (!supabase) {
+        return { data: null, error: { message: "Supabase not configured" } };
+    }
+
+    const { data, error } = await supabase
+        .from("safety_reports")
+        .delete()
+        .eq("id", reportId)
+        .eq("user_id", userId)
+        .select();
+
+    return { data, error };
+}

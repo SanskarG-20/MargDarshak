@@ -251,6 +251,23 @@ body {
   }
 }
 
+@keyframes pulse-red {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.4);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 @keyframes dash-bg-drift {
   0%   { background-position: 0% 0%; }
   50%  { background-position: 100% 100%; }
@@ -366,6 +383,10 @@ body {
 
 .in-s {
   animation: scale-in .6s cubic-bezier(.4, 0, .2, 1) both;
+}
+
+.map-crosshair {
+  cursor: crosshair !important;
 }
 
 /* ── Live Decision Mode ──────────────────────────────────────────────────── */
