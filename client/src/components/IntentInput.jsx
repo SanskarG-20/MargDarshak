@@ -84,7 +84,7 @@ export default function IntentInput({ dbUser }) {
     };
 
     return (
-        <div style={{ marginTop: 32 }}>
+        <div data-tour="query-input" style={{ marginTop: 32 }}>
             {/* Section header */}
             <div
                 style={{

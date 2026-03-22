@@ -11,7 +11,7 @@ import { Y, BK, WH } from "../constants/theme";
 export default function WeatherBadge({ weather, loading, city }) {
     if (loading) {
         return (
-            <div style={containerStyle}>
+            <div data-tour="weather-badge" style={containerStyle}>
                 <div style={headerStyle}>
                     <Dot color={Y} pulse />
                     WEATHER
@@ -24,7 +24,7 @@ export default function WeatherBadge({ weather, loading, city }) {
     if (!weather) return null;
 
     return (
-        <div style={containerStyle}>
+        <div data-tour="weather-badge" style={containerStyle}>
             {/* Header */}
             <div style={headerStyle}>
                 <Dot color="#22c55e" />

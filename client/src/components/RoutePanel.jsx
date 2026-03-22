@@ -126,7 +126,7 @@ export default function RoutePanel({ userLocation, markers = [], onRouteCalculat
     if (validMarkers.length === 0) return null;
 
     return (
-        <div style={{ marginTop: 32 }}>
+        <div data-tour="route-panel" style={{ marginTop: 32 }}>
             {/* Header */}
             <div style={headerStyle}>
                 <Dot color={routes ? "#22c55e" : Y} pulse={loading} />

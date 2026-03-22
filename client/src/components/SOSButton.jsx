@@ -116,6 +116,7 @@ export default function SOSButton({ dbUser, userLocation }) {
         <>
             {/* ── Floating SOS Button ────────────────── */}
             <button
+                data-tour="sos-button"
                 onClick={handleActivate}
                 disabled={loading}
                 aria-label="SOS Emergency"

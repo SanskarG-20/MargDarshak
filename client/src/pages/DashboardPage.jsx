@@ -17,6 +17,8 @@ import SavedRoutes from "../components/SavedRoutes";
 import MapView from "../components/MapView";
 import RoutePanel from "../components/RoutePanel";
 import SOSButton from "../components/SOSButton";
+import OnboardingTour from "../components/OnboardingTour";
+import useOnboardingTour, { TOUR_STEPS } from "../hooks/useOnboardingTour";
 
 export default function DashboardPage() {
     const { user, isLoaded } = useUser();
@@ -32,6 +34,7 @@ export default function DashboardPage() {
     const [showAQI, setShowAQI] = useState(false);
     const [pendingQuery, setPendingQuery] = useState(null);
     const [offline, setOffline] = useState(!navigator.onLine);
+    const { tourActive, currentStep, totalSteps, next, skip } = useOnboardingTour();
 
     // Detect browser online/offline events + check cache flag after AI calls
     useEffect(() => {
@@ -469,6 +472,17 @@ export default function DashboardPage() {
 
                 {/* SOS Emergency Button */}
                 <SOSButton dbUser={dbUser} userLocation={userLocation} />
+
+                {tourActive && (
+                    <OnboardingTour
+                        steps={TOUR_STEPS}
+                        currentStep={currentStep}
+                        totalSteps={totalSteps}
+                        onNext={next}
+                        onSkip={skip}
+                        isActive={tourActive}
+                    />
+                )}
 
                 {/* Status indicators */}
                 <div
