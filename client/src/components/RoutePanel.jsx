@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Y, BK, WH } from "../constants/theme";
 import { compareRoutes } from "../services/routeService";
+import ComparePanel from "./ComparePanel";
 
 /** Minimal SVG icons for each travel mode */
 function ModeIcon({ mode, size = 20, color = WH }) {
@@ -61,8 +62,31 @@ export default function RoutePanel({ userLocation, markers = [], onRouteCalculat
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [isFallback, setIsFallback] = useState(false);
+    const [compareMode, setCompareMode] = useState(false);
+    const [selectedForCompare, setSelectedForCompare] = useState([]);
+    const [showComparePanel, setShowComparePanel] = useState(false);
 
     const validMarkers = markers.filter((m) => m.lat && m.lng);
+
+    useEffect(() => {
+        setSelectedForCompare([]);
+        setCompareMode(false);
+        setShowComparePanel(false);
+    }, [routes]);
+
+    const toggleCompareSelect = (mode) => {
+        setSelectedForCompare((prev) => {
+            if (prev.includes(mode)) {
+                const next = prev.filter((m) => m !== mode);
+                setCompareMode(next.length > 0);
+                return next;
+            }
+            if (prev.length >= 2) return prev;
+            const next = [...prev, mode];
+            setCompareMode(true);
+            return next;
+        });
+    };
 
     const handleCalculate = async (marker) => {
         if (!userLocation?.lat || !userLocation?.lng) return;
@@ -431,9 +455,89 @@ export default function RoutePanel({ userLocation, markers = [], onRouteCalculat
                                     )}
                                 </div>
                             )}
+
+                            <div style={{
+                                marginTop: 8,
+                                display: "flex",
+                                justifyContent: "flex-end",
+                            }}>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleCompareSelect(route.mode)}
+                                    disabled={selectedForCompare.length >= 2 && !selectedForCompare.includes(route.mode)}
+                                    style={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 6,
+                                        border: "1px solid rgba(204,255,0,.4)",
+                                        background: selectedForCompare.includes(route.mode) ? Y : "transparent",
+                                        color: selectedForCompare.includes(route.mode) ? BK : Y,
+                                        fontSize: 16,
+                                        fontWeight: 700,
+                                        cursor: selectedForCompare.length >= 2 && !selectedForCompare.includes(route.mode)
+                                            ? "not-allowed"
+                                            : "pointer",
+                                        opacity: selectedForCompare.length >= 2 && !selectedForCompare.includes(route.mode)
+                                            ? 0.3
+                                            : 1,
+                                    }}
+                                    title="Compare"
+                                >
+                                    {selectedForCompare.includes(route.mode) ? "✓" : "＋"}
+                                </button>
+                            </div>
                         </div>
                     ))}
+
+                    {compareMode && selectedForCompare.length === 2 && (
+                        <div style={{
+                            position: "sticky",
+                            bottom: 0,
+                            zIndex: 5,
+                            marginTop: 8,
+                            padding: "10px 12px",
+                            border: "1px solid rgba(204,255,0,.25)",
+                            background: "rgba(0,0,0,.92)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 10,
+                            flexWrap: "wrap",
+                        }}>
+                            <div style={{
+                                fontFamily: "'DM Sans',sans-serif",
+                                fontSize: 12,
+                                color: "rgba(255,255,255,.75)",
+                                letterSpacing: 0.3,
+                            }}>
+                                {`COMPARING ${selectedForCompare[0]} vs ${selectedForCompare[1]}`}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowComparePanel(true)}
+                                style={{
+                                    background: Y,
+                                    color: BK,
+                                    border: "none",
+                                    padding: "8px 14px",
+                                    fontSize: 12,
+                                    fontWeight: 800,
+                                    cursor: "pointer",
+                                }}
+                            >
+                                VIEW COMPARISON →
+                            </button>
+                        </div>
+                    )}
                 </div>
+            )}
+
+            {showComparePanel && selectedForCompare.length === 2 && (
+                <ComparePanel
+                    optionA={routes?.find((r) => r.mode === selectedForCompare[0])}
+                    optionB={routes?.find((r) => r.mode === selectedForCompare[1])}
+                    onClose={() => setShowComparePanel(false)}
+                />
             )}
         </div>
     );

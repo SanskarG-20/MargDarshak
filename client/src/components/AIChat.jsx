@@ -9,6 +9,7 @@ import { calculateEcoScore } from "../services/ecoScoreService";
 import WhyThisRoute from "./WhyThisRoute";
 import SmartSuggestions from "./SmartSuggestions";
 import JourneyExplainer from "./JourneyExplainer";
+import ComparePanel from "./ComparePanel";
 
 const SpeechRecognition =
     typeof window !== "undefined"
@@ -839,6 +840,8 @@ function TransportReveal({ options, weather, dbUser }) {
     const [glowBest, setGlowBest] = useState(false);
     const [saved, setSaved] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [showComparePanel, setShowComparePanel] = useState(false);
+    const [comparePair, setComparePair] = useState([]);
 
     // Enrich AI options with eco scores estimated from duration
     const enrichedOptions = enrichWithEco(options);
@@ -888,6 +891,39 @@ function TransportReveal({ options, weather, dbUser }) {
         return () => timers.forEach(clearTimeout);
     }, [enrichedOptions.length]);
 
+    const parseCost = (text, mode) => {
+        if ((mode || "").toLowerCase() === "walk") return 0;
+        if (!text) return Number.MAX_SAFE_INTEGER;
+        const raw = String(text).toLowerCase();
+        if (raw.includes("free")) return 0;
+        const digits = raw.replace(/[^\d]/g, "");
+        return digits ? parseInt(digits, 10) : Number.MAX_SAFE_INTEGER;
+    };
+
+    const parseDuration = (text) => {
+        if (!text) return Number.MAX_SAFE_INTEGER;
+        const raw = String(text).toLowerCase();
+        const hr = raw.match(/(\d+)\s*h(?:r|our)?/);
+        const mn = raw.match(/(\d+)\s*m(?:in|ins|inute|inutes)?/);
+        if (!hr && !mn) {
+            const n = raw.match(/\d+/);
+            return n ? parseInt(n[0], 10) : Number.MAX_SAFE_INTEGER;
+        }
+        return (hr ? parseInt(hr[1], 10) * 60 : 0) + (mn ? parseInt(mn[1], 10) : 0);
+    };
+
+    const handleCompareTop2 = () => {
+        if (enrichedOptions.length < 2) return;
+        const sorted = [...enrichedOptions].sort((a, b) => {
+            const ac = parseCost(a.cost, a.mode);
+            const bc = parseCost(b.cost, b.mode);
+            if (ac !== bc) return ac - bc;
+            return parseDuration(a.duration) - parseDuration(b.duration);
+        });
+        setComparePair([sorted[0], sorted[1]]);
+        setShowComparePanel(true);
+    };
+
     return (
         <div style={{ marginTop: 16 }}>
             <div
@@ -920,6 +956,27 @@ function TransportReveal({ options, weather, dbUser }) {
                     );
                 })}
             </div>
+
+            {glowBest && enrichedOptions.length >= 2 && (
+                <div style={{ marginTop: 10 }}>
+                    <button
+                        type="button"
+                        onClick={handleCompareTop2}
+                        style={{
+                            border: "1px solid rgba(204,255,0,.3)",
+                            color: "rgba(204,255,0,.7)",
+                            background: "transparent",
+                            borderRadius: 50,
+                            padding: "8px 18px",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                        }}
+                    >
+                        ◈ COMPARE TOP 2 ROUTES
+                    </button>
+                </div>
+            )}
 
             {/* Decision summary + WhyThisRoute + Save Route after all revealed */}
             {glowBest && (() => {
@@ -1008,6 +1065,15 @@ function TransportReveal({ options, weather, dbUser }) {
                     </>
                 );
             })()}
+
+            {showComparePanel && comparePair.length === 2 && (
+                <ComparePanel
+                    optionA={comparePair[0]}
+                    optionB={comparePair[1]}
+                    weather={weather}
+                    onClose={() => setShowComparePanel(false)}
+                />
+            )}
         </div>
     );
 }
