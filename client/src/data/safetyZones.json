@@ -1,63 +1,490 @@
 [
-  { "area": "Andheri East", "lat": 19.1136, "lng": 72.8697, "safetyScore": 7, "nightRisk": true },
-  { "area": "Andheri West", "lat": 19.1364, "lng": 72.8296, "safetyScore": 8, "nightRisk": false },
-  { "area": "Bandra West", "lat": 19.0544, "lng": 72.8267, "safetyScore": 9, "nightRisk": false },
-  { "area": "Bandra East", "lat": 19.0590, "lng": 72.8497, "safetyScore": 7, "nightRisk": true },
-  { "area": "Churchgate", "lat": 18.9322, "lng": 72.8264, "safetyScore": 9, "nightRisk": false },
-  { "area": "Colaba", "lat": 18.9067, "lng": 72.8147, "safetyScore": 9, "nightRisk": false },
-  { "area": "CST / Fort", "lat": 18.9398, "lng": 72.8354, "safetyScore": 8, "nightRisk": true },
-  { "area": "Dadar East", "lat": 19.0178, "lng": 72.8478, "safetyScore": 7, "nightRisk": true },
-  { "area": "Dadar West", "lat": 19.0186, "lng": 72.8420, "safetyScore": 8, "nightRisk": false },
-  { "area": "Dahisar East", "lat": 19.2502, "lng": 72.8625, "safetyScore": 5, "nightRisk": true },
-  { "area": "Dahisar West", "lat": 19.2437, "lng": 72.8530, "safetyScore": 6, "nightRisk": true },
-  { "area": "Dharavi", "lat": 19.0438, "lng": 72.8534, "safetyScore": 3, "nightRisk": true },
-  { "area": "Dombivli", "lat": 19.2183, "lng": 73.0867, "safetyScore": 6, "nightRisk": true },
-  { "area": "Ghatkopar East", "lat": 19.0866, "lng": 72.9081, "safetyScore": 7, "nightRisk": true },
-  { "area": "Ghatkopar West", "lat": 19.0860, "lng": 72.8986, "safetyScore": 7, "nightRisk": false },
-  { "area": "Goregaon East", "lat": 19.1663, "lng": 72.8526, "safetyScore": 6, "nightRisk": true },
-  { "area": "Goregaon West", "lat": 19.1551, "lng": 72.8359, "safetyScore": 7, "nightRisk": false },
-  { "area": "Jogeshwari East", "lat": 19.1316, "lng": 72.8575, "safetyScore": 5, "nightRisk": true },
-  { "area": "Jogeshwari West", "lat": 19.1368, "lng": 72.8432, "safetyScore": 6, "nightRisk": true },
-  { "area": "Juhu", "lat": 19.0883, "lng": 72.8266, "safetyScore": 9, "nightRisk": false },
-  { "area": "Kalyan", "lat": 19.2437, "lng": 73.1355, "safetyScore": 5, "nightRisk": true },
-  { "area": "Kandivali East", "lat": 19.2012, "lng": 72.8625, "safetyScore": 6, "nightRisk": true },
-  { "area": "Kandivali West", "lat": 19.2040, "lng": 72.8410, "safetyScore": 7, "nightRisk": false },
-  { "area": "Kurla East", "lat": 19.0726, "lng": 72.8845, "safetyScore": 4, "nightRisk": true },
-  { "area": "Kurla West", "lat": 19.0726, "lng": 72.8740, "safetyScore": 5, "nightRisk": true },
-  { "area": "Lower Parel", "lat": 18.9977, "lng": 72.8296, "safetyScore": 8, "nightRisk": false },
-  { "area": "Mahim", "lat": 19.0402, "lng": 72.8421, "safetyScore": 6, "nightRisk": true },
-  { "area": "Malad East", "lat": 19.1880, "lng": 72.8617, "safetyScore": 5, "nightRisk": true },
-  { "area": "Malad West", "lat": 19.1870, "lng": 72.8403, "safetyScore": 7, "nightRisk": false },
-  { "area": "Marol", "lat": 19.1186, "lng": 72.8801, "safetyScore": 6, "nightRisk": true },
-  { "area": "Mulund East", "lat": 19.1726, "lng": 72.9567, "safetyScore": 7, "nightRisk": false },
-  { "area": "Mulund West", "lat": 19.1726, "lng": 72.9413, "safetyScore": 8, "nightRisk": false },
-  { "area": "Navi Mumbai - Vashi", "lat": 19.0771, "lng": 72.9981, "safetyScore": 8, "nightRisk": false },
-  { "area": "Navi Mumbai - Nerul", "lat": 19.0330, "lng": 73.0169, "safetyScore": 8, "nightRisk": false },
-  { "area": "Navi Mumbai - Panvel", "lat": 18.9894, "lng": 73.1175, "safetyScore": 5, "nightRisk": true },
-  { "area": "Powai", "lat": 19.1176, "lng": 72.9060, "safetyScore": 9, "nightRisk": false },
-  { "area": "Santacruz East", "lat": 19.0791, "lng": 72.8572, "safetyScore": 6, "nightRisk": true },
-  { "area": "Santacruz West", "lat": 19.0830, "lng": 72.8370, "safetyScore": 8, "nightRisk": false },
-  { "area": "Sion", "lat": 19.0400, "lng": 72.8615, "safetyScore": 5, "nightRisk": true },
-  { "area": "Thane West", "lat": 19.2183, "lng": 72.9781, "safetyScore": 7, "nightRisk": false },
-  { "area": "Thane East", "lat": 19.1860, "lng": 72.9755, "safetyScore": 5, "nightRisk": true },
-  { "area": "Versova", "lat": 19.1340, "lng": 72.8133, "safetyScore": 8, "nightRisk": false },
-  { "area": "Vile Parle East", "lat": 19.0987, "lng": 72.8564, "safetyScore": 7, "nightRisk": true },
-  { "area": "Vile Parle West", "lat": 19.1013, "lng": 72.8384, "safetyScore": 8, "nightRisk": false },
-  { "area": "Vikhroli", "lat": 19.1000, "lng": 72.9257, "safetyScore": 6, "nightRisk": true },
-  { "area": "Wadala", "lat": 19.0180, "lng": 72.8622, "safetyScore": 6, "nightRisk": true },
-  { "area": "Worli", "lat": 19.0176, "lng": 72.8150, "safetyScore": 8, "nightRisk": false },
-  { "area": "BKC", "lat": 19.0652, "lng": 72.8685, "safetyScore": 9, "nightRisk": false },
-  { "area": "Nariman Point", "lat": 18.9255, "lng": 72.8242, "safetyScore": 9, "nightRisk": false },
-  { "area": "Marine Drive", "lat": 18.9442, "lng": 72.8234, "safetyScore": 9, "nightRisk": false },
-  { "area": "Borivali East", "lat": 19.2290, "lng": 72.8563, "safetyScore": 6, "nightRisk": true },
-  { "area": "Borivali West", "lat": 19.2307, "lng": 72.8411, "safetyScore": 8, "nightRisk": false },
-  { "area": "Aarey Colony", "lat": 19.1500, "lng": 72.8700, "safetyScore": 4, "nightRisk": true },
-  { "area": "Mankhurd", "lat": 19.0500, "lng": 72.9260, "safetyScore": 3, "nightRisk": true },
-  { "area": "Govandi", "lat": 19.0558, "lng": 72.9110, "safetyScore": 3, "nightRisk": true },
-  { "area": "Chembur", "lat": 19.0522, "lng": 72.8972, "safetyScore": 7, "nightRisk": false },
-  { "area": "Vidyavihar", "lat": 19.0790, "lng": 72.8960, "safetyScore": 7, "nightRisk": false },
-  { "area": "Mira Road", "lat": 19.2812, "lng": 72.8685, "safetyScore": 5, "nightRisk": true },
-  { "area": "Bhandup", "lat": 19.1500, "lng": 72.9350, "safetyScore": 6, "nightRisk": true },
-  { "area": "Khar West", "lat": 19.0705, "lng": 72.8333, "safetyScore": 9, "nightRisk": false },
-  { "area": "Prabhadevi", "lat": 19.0110, "lng": 72.8283, "safetyScore": 8, "nightRisk": false }
+    {
+        "area":  "Andheri East",
+        "lat":  19.1136,
+        "lng":  72.8697,
+        "safetyScore":  7,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Andheri West",
+        "lat":  19.1364,
+        "lng":  72.8296,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  3
+    },
+    {
+        "area":  "Bandra West",
+        "lat":  19.0544,
+        "lng":  72.8267,
+        "safetyScore":  9,
+        "nightRisk":  false,
+        "aqi":  1
+    },
+    {
+        "area":  "Bandra East",
+        "lat":  19.0590,
+        "lng":  72.8497,
+        "safetyScore":  7,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Churchgate",
+        "lat":  18.9322,
+        "lng":  72.8264,
+        "safetyScore":  9,
+        "nightRisk":  false,
+        "aqi":  1
+    },
+    {
+        "area":  "Colaba",
+        "lat":  18.9067,
+        "lng":  72.8147,
+        "safetyScore":  9,
+        "nightRisk":  false,
+        "aqi":  1
+    },
+    {
+        "area":  "CST / Fort",
+        "lat":  18.9398,
+        "lng":  72.8354,
+        "safetyScore":  8,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Dadar East",
+        "lat":  19.0178,
+        "lng":  72.8478,
+        "safetyScore":  7,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Dadar West",
+        "lat":  19.0186,
+        "lng":  72.8420,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Dahisar East",
+        "lat":  19.2502,
+        "lng":  72.8625,
+        "safetyScore":  5,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Dahisar West",
+        "lat":  19.2437,
+        "lng":  72.8530,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Dharavi",
+        "lat":  19.0438,
+        "lng":  72.8534,
+        "safetyScore":  3,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Dombivli",
+        "lat":  19.2183,
+        "lng":  73.0867,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Ghatkopar East",
+        "lat":  19.0866,
+        "lng":  72.9081,
+        "safetyScore":  7,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Ghatkopar West",
+        "lat":  19.0860,
+        "lng":  72.8986,
+        "safetyScore":  7,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Goregaon East",
+        "lat":  19.1663,
+        "lng":  72.8526,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Goregaon West",
+        "lat":  19.1551,
+        "lng":  72.8359,
+        "safetyScore":  7,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Jogeshwari East",
+        "lat":  19.1316,
+        "lng":  72.8575,
+        "safetyScore":  5,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Jogeshwari West",
+        "lat":  19.1368,
+        "lng":  72.8432,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Juhu",
+        "lat":  19.0883,
+        "lng":  72.8266,
+        "safetyScore":  9,
+        "nightRisk":  false,
+        "aqi":  1
+    },
+    {
+        "area":  "Kalyan",
+        "lat":  19.2437,
+        "lng":  73.1355,
+        "safetyScore":  5,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Kandivali East",
+        "lat":  19.2012,
+        "lng":  72.8625,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Kandivali West",
+        "lat":  19.2040,
+        "lng":  72.8410,
+        "safetyScore":  7,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Kurla East",
+        "lat":  19.0726,
+        "lng":  72.8845,
+        "safetyScore":  4,
+        "nightRisk":  true,
+        "aqi":  4
+    },
+    {
+        "area":  "Kurla West",
+        "lat":  19.0726,
+        "lng":  72.8740,
+        "safetyScore":  5,
+        "nightRisk":  true,
+        "aqi":  4
+    },
+    {
+        "area":  "Lower Parel",
+        "lat":  18.9977,
+        "lng":  72.8296,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Mahim",
+        "lat":  19.0402,
+        "lng":  72.8421,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Malad East",
+        "lat":  19.1880,
+        "lng":  72.8617,
+        "safetyScore":  5,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Malad West",
+        "lat":  19.1870,
+        "lng":  72.8403,
+        "safetyScore":  7,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Marol",
+        "lat":  19.1186,
+        "lng":  72.8801,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Mulund East",
+        "lat":  19.1726,
+        "lng":  72.9567,
+        "safetyScore":  7,
+        "nightRisk":  false,
+        "aqi":  3
+    },
+    {
+        "area":  "Mulund West",
+        "lat":  19.1726,
+        "lng":  72.9413,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  3
+    },
+    {
+        "area":  "Navi Mumbai - Vashi",
+        "lat":  19.0771,
+        "lng":  72.9981,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Navi Mumbai - Nerul",
+        "lat":  19.0330,
+        "lng":  73.0169,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Navi Mumbai - Panvel",
+        "lat":  18.9894,
+        "lng":  73.1175,
+        "safetyScore":  5,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Powai",
+        "lat":  19.1176,
+        "lng":  72.9060,
+        "safetyScore":  9,
+        "nightRisk":  false,
+        "aqi":  1
+    },
+    {
+        "area":  "Santacruz East",
+        "lat":  19.0791,
+        "lng":  72.8572,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Santacruz West",
+        "lat":  19.0830,
+        "lng":  72.8370,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Sion",
+        "lat":  19.0400,
+        "lng":  72.8615,
+        "safetyScore":  5,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Thane West",
+        "lat":  19.2183,
+        "lng":  72.9781,
+        "safetyScore":  7,
+        "nightRisk":  false,
+        "aqi":  3
+    },
+    {
+        "area":  "Thane East",
+        "lat":  19.1860,
+        "lng":  72.9755,
+        "safetyScore":  5,
+        "nightRisk":  true,
+        "aqi":  4
+    },
+    {
+        "area":  "Versova",
+        "lat":  19.1340,
+        "lng":  72.8133,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Vile Parle East",
+        "lat":  19.0987,
+        "lng":  72.8564,
+        "safetyScore":  7,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Vile Parle West",
+        "lat":  19.1013,
+        "lng":  72.8384,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Vikhroli",
+        "lat":  19.1000,
+        "lng":  72.9257,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Wadala",
+        "lat":  19.0180,
+        "lng":  72.8622,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Worli",
+        "lat":  19.0176,
+        "lng":  72.8150,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "BKC",
+        "lat":  19.0652,
+        "lng":  72.8685,
+        "safetyScore":  9,
+        "nightRisk":  false,
+        "aqi":  1
+    },
+    {
+        "area":  "Nariman Point",
+        "lat":  18.9255,
+        "lng":  72.8242,
+        "safetyScore":  9,
+        "nightRisk":  false,
+        "aqi":  1
+    },
+    {
+        "area":  "Marine Drive",
+        "lat":  18.9442,
+        "lng":  72.8234,
+        "safetyScore":  9,
+        "nightRisk":  false,
+        "aqi":  1
+    },
+    {
+        "area":  "Borivali East",
+        "lat":  19.2290,
+        "lng":  72.8563,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  2
+    },
+    {
+        "area":  "Borivali West",
+        "lat":  19.2307,
+        "lng":  72.8411,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Aarey Colony",
+        "lat":  19.1500,
+        "lng":  72.8700,
+        "safetyScore":  4,
+        "nightRisk":  true,
+        "aqi":  4
+    },
+    {
+        "area":  "Mankhurd",
+        "lat":  19.0500,
+        "lng":  72.9260,
+        "safetyScore":  3,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Govandi",
+        "lat":  19.0558,
+        "lng":  72.9110,
+        "safetyScore":  3,
+        "nightRisk":  true,
+        "aqi":  5
+    },
+    {
+        "area":  "Chembur",
+        "lat":  19.0522,
+        "lng":  72.8972,
+        "safetyScore":  7,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Vidyavihar",
+        "lat":  19.0790,
+        "lng":  72.8960,
+        "safetyScore":  7,
+        "nightRisk":  false,
+        "aqi":  2
+    },
+    {
+        "area":  "Mira Road",
+        "lat":  19.2812,
+        "lng":  72.8685,
+        "safetyScore":  5,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Bhandup",
+        "lat":  19.1500,
+        "lng":  72.9350,
+        "safetyScore":  6,
+        "nightRisk":  true,
+        "aqi":  3
+    },
+    {
+        "area":  "Khar West",
+        "lat":  19.0705,
+        "lng":  72.8333,
+        "safetyScore":  9,
+        "nightRisk":  false,
+        "aqi":  1
+    },
+    {
+        "area":  "Prabhadevi",
+        "lat":  19.0110,
+        "lng":  72.8283,
+        "safetyScore":  8,
+        "nightRisk":  false,
+        "aqi":  2
+    }
 ]

@@ -29,6 +29,7 @@ export default function DashboardPage() {
     const [weatherLoading, setWeatherLoading] = useState(false);
     const [routeGeometry, setRouteGeometry] = useState([]);
     const [routeActive, setRouteActive] = useState(false);
+    const [showAQI, setShowAQI] = useState(false);
     const [pendingQuery, setPendingQuery] = useState(null);
     const [offline, setOffline] = useState(!navigator.onLine);
 
@@ -455,6 +456,8 @@ export default function DashboardPage() {
                     markers={mapMarkers}
                     routeGeometry={routeGeometry}
                     onMapReady={() => setMapActive(true)}
+                    showAQI={showAQI}
+                    onAQIToggle={() => setShowAQI((v) => !v)}
                 />
 
                 {/* Route Intelligence */}
