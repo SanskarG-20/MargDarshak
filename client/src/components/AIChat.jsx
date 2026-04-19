@@ -10,6 +10,7 @@ import WhyThisRoute from "./WhyThisRoute";
 import SmartSuggestions from "./SmartSuggestions";
 import JourneyExplainer from "./JourneyExplainer";
 import ComparePanel from "./ComparePanel";
+import TripTimeline from "./TripTimeline";
 
 const SpeechRecognition =
     typeof window !== "undefined"
@@ -567,6 +568,8 @@ function AIResponse({ msg, weather, dbUser, usePreferences = false, preferences 
                     {data.summary}
                 </div>
             )}
+
+            <TripTimeline itinerary={data.itinerary} />
 
             {/* Places */}
             {data.places?.length > 0 && (
