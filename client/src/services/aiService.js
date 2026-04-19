@@ -95,7 +95,12 @@ SAFETY INTELLIGENCE Rules:
 - Prefer well-lit, high-traffic routes at night.
 - Recommend cab/auto over walking through low-safety areas.
 - Metro stations are generally safe (CCTV, security staff).
-- Include a safetyNote field in each transportOption when relevant.`;
+- Include a safetyNote field in each transportOption when relevant.
+
+CROWD DENSITY Rules:
+- Consider crowd density in recommendations, especially during peak commute windows.
+- Favor lower-crowd options when time and cost are otherwise close.
+- Include realistic crowdLevel values for transportOptions: low, moderate, high, or packed.`;
 
 function formatModeLabel(mode) {
     const key = String(mode || "").toLowerCase();

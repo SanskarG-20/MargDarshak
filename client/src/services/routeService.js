@@ -11,6 +11,7 @@ import { evaluateBus } from "./busService.js";
 import { evaluateTrain } from "./trainService.js";
 import { attachSafetyToModes } from "./safetyService.js";
 import { attachEcoScores } from "./ecoScoreService.js";
+import { attachCrowdDensityToRoutes } from "./crowdService.js";
 import { applyPreferencesToRoutes } from "./personalizationService.js";
 import { cacheRoute, getCachedRoute, setOfflineFlag } from "../utils/offlineCache.js";
 
@@ -228,25 +229,42 @@ export async function compareRoutes(startLat, startLng, endLat, endLng, preferen
         });
     }
 
+    // Attach crowd density intelligence to each mode
+    let crowdAwareModes = modes;
+    try {
+        crowdAwareModes = await attachCrowdDensityToRoutes(modes, {
+            startLat,
+            startLng,
+            endLat,
+            endLng,
+            distanceKm,
+        });
+    } catch (err) {
+        console.warn("[MargDarshak Route] Crowd evaluation failed:", err);
+    }
+
     // Attach safety intelligence to each mode
     try {
-        attachSafetyToModes(modes, startLat, startLng, endLat, endLng);
+        attachSafetyToModes(crowdAwareModes, startLat, startLng, endLat, endLng);
     } catch (err) {
         console.warn("[MargDarshak Route] Safety evaluation failed:", err);
     }
 
     // Attach eco travel scores to each mode
     try {
-        attachEcoScores(modes, distanceKm);
+        attachEcoScores(crowdAwareModes, distanceKm);
     } catch (err) {
         console.warn("[MargDarshak Route] Eco score evaluation failed:", err);
     }
 
     // Baseline score: cost + eta with public transit preference in medium distance
-    const scoredInput = modes.map(function(m) {
+    const scoredInput = crowdAwareModes.map(function(m) {
         var baseScore = m.costAmount + m.durationSec / 60;
         if ((m.mode === "metro" || m.mode === "train") && distanceKm >= 5 && distanceKm <= 25) {
             baseScore -= 5;
+        }
+        if (Number.isFinite(m.crowdScore)) {
+            baseScore += (m.crowdScore - 1) * 2.5;
         }
         return {
             ...m,

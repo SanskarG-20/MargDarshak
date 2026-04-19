@@ -1345,7 +1345,10 @@ function TransportCard({ opt, glowing }) {
                 {opt.frequency && (
                     <TransportStat label="FREQ" value={opt.frequency} />
                 )}
-                {opt.crowdLevel && (
+                {opt.crowdBadge && (
+                    <TransportStat label="CROWD" value={opt.crowdBadge} color={CROWD_COLORS[opt.crowdLevel] || null} />
+                )}
+                {!opt.crowdBadge && opt.crowdLevel && (
                     <TransportStat label="CROWD" value={opt.crowdLevel.toUpperCase()} color={CROWD_COLORS[opt.crowdLevel] || null} />
                 )}
                 {opt.details && (

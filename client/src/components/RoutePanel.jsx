@@ -320,6 +320,20 @@ export default function RoutePanel({
                                         highlight={false}
                                     />
                                 )}
+                                {route.crowdBadge && (
+                                    <StatItem
+                                        label="CROWD"
+                                        value={route.crowdBadge}
+                                        highlight={false}
+                                        color={
+                                            route.crowdLevel === "packed" || route.crowdLevel === "high"
+                                                ? "#ef4444"
+                                                : route.crowdLevel === "moderate"
+                                                    ? "#eab308"
+                                                    : "#22c55e"
+                                        }
+                                    />
+                                )}
                                 {route.ecoScore != null && (
                                     <StatItem
                                         label="ECO"
@@ -423,8 +437,8 @@ export default function RoutePanel({
                                     </div>
                                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 11, color: "rgba(255,255,255,.35)" }}>
                                         <span>{route.stationCount} stations</span>
-                                        {route.crowdLevel && (
-                                            <span>Crowd: <span style={{ color: route.crowdLevel === "packed" ? "#ef4444" : route.crowdLevel === "high" ? "#f97316" : route.crowdLevel === "moderate" ? "#eab308" : "#22c55e", textTransform: "uppercase", fontWeight: 600 }}>{route.crowdLevel}</span></span>
+                                        {route.crowdBadge && (
+                                            <span>Crowd: <span style={{ color: route.crowdLevel === "packed" ? "#ef4444" : route.crowdLevel === "high" ? "#f97316" : route.crowdLevel === "moderate" ? "#eab308" : "#22c55e", fontWeight: 600 }}>{route.crowdBadge}</span></span>
                                         )}
                                         {route.walkToStation && (
                                             <span>Walk to station: {route.walkToStation}</span>
@@ -466,8 +480,8 @@ export default function RoutePanel({
                                         <span>{route.alighting}</span>
                                     </div>
                                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 11, color: "rgba(255,255,255,.35)" }}>
-                                        {route.crowdLevel && (
-                                            <span>Crowd: <span style={{color: route.crowdLevel === "high" ? "#f97316" : route.crowdLevel === "moderate" ? "#eab308" : "#22c55e", textTransform: "uppercase", fontWeight: 600}}>{route.crowdLevel}</span></span>
+                                        {route.crowdBadge && (
+                                            <span>Crowd: <span style={{color: route.crowdLevel === "high" || route.crowdLevel === "packed" ? "#f97316" : route.crowdLevel === "moderate" ? "#eab308" : "#22c55e", fontWeight: 600}}>{route.crowdBadge}</span></span>
                                         )}
                                         {route.walkToStop && (
                                             <span>Walk to stop: {route.walkToStop}</span>
