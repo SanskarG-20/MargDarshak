@@ -9,17 +9,23 @@ import { fetchWeatherAndAQI, buildWeatherContext } from "../services/weatherServ
 import { saveEnvironmentLog } from "../services/supabaseClient";
 import { getUserPreferences, updatePreferencesFromHistory } from "../services/personalizationService";
 import { getPredictiveTravelAlerts } from "../services/predictiveService";
+import { askJourneyCopilot } from "../services/aiService";
 import {
     detectDelays,
     monitorRouteDeviation,
     suggestBetterRoute,
 } from "../services/liveRoutingService";
+import {
+    buildCopilotSnapshot,
+    getHeuristicCopilotSuggestion,
+} from "../services/continuousCopilotService";
 import { isOfflineFlagSet } from "../utils/offlineCache";
 import Cursor from "../components/Cursor";
 import LocationBar from "../components/LocationBar";
 import WeatherBadge from "../components/WeatherBadge";
 import IntentInput from "../components/IntentInput";
 import AIChat from "../components/AIChat";
+import ContinuousCopilotPanel from "../components/ContinuousCopilotPanel";
 import SavedRoutes from "../components/SavedRoutes";
 import TravelAnalyticsPanel from "../components/TravelAnalyticsPanel";
 import MapView from "../components/MapView";
@@ -46,6 +52,9 @@ export default function DashboardPage() {
     const [offline, setOffline] = useState(!navigator.onLine);
     const [usePreferences, setUsePreferences] = useState(true);
     const [safeMode, setSafeMode] = useState(false);
+    const [journeyActive, setJourneyActive] = useState(false);
+    const [copilotEnabled, setCopilotEnabled] = useState(true);
+    const [copilotSuggestion, setCopilotSuggestion] = useState(null);
     const [preferences, setPreferences] = useState(null);
     const [prefLoading, setPrefLoading] = useState(false);
     const [rerouteSuggestion, setRerouteSuggestion] = useState(null);
@@ -54,10 +63,14 @@ export default function DashboardPage() {
     const lastSuggestionRef = useRef(0);
     const suggestionSignatureRef = useRef("");
     const liveMonitorBusyRef = useRef(false);
+    const copilotBusyRef = useRef(false);
     const currentJourneyRef = useRef(currentJourney);
     const rerouteSuggestionRef = useRef(rerouteSuggestion);
     const preferencesRef = useRef(preferences);
     const usePreferencesRef = useRef(usePreferences);
+    const liveJourneyLocationRef = useRef(liveJourneyLocation);
+    const weatherRef = useRef(weather);
+    const copilotSignatureRef = useRef("");
     const effectiveUserLocation = liveJourneyLocation || userLocation;
 
     useEffect(() => {
@@ -75,6 +88,18 @@ export default function DashboardPage() {
     useEffect(() => {
         usePreferencesRef.current = usePreferences;
     }, [usePreferences]);
+
+    useEffect(() => {
+        liveJourneyLocationRef.current = liveJourneyLocation;
+    }, [liveJourneyLocation]);
+
+    useEffect(() => {
+        weatherRef.current = weather;
+    }, [weather]);
+
+    useEffect(() => {
+        setJourneyActive(!!currentJourney);
+    }, [currentJourney]);
 
     // Detect browser online/offline events + check cache flag after AI calls
     useEffect(() => {
@@ -193,8 +218,68 @@ export default function DashboardPage() {
         if (currentJourney) return;
         setLiveJourneyLocation(null);
         setRerouteSuggestion(null);
+        setCopilotSuggestion(null);
         suggestionSignatureRef.current = "";
+        copilotSignatureRef.current = "";
     }, [currentJourney]);
+
+    useEffect(() => {
+        if (!journeyActive || !copilotEnabled || !currentJourney?.destination?.lat) return undefined;
+
+        const intervalId = setInterval(async () => {
+            if (copilotBusyRef.current) return;
+
+            const activeJourney = currentJourneyRef.current;
+            const currentPosition = liveJourneyLocationRef.current || activeJourney?.lastKnownPosition || userLocation;
+            if (!activeJourney || !currentPosition) return;
+
+            copilotBusyRef.current = true;
+            try {
+                const liveWeather = await fetchWeatherAndAQI(currentPosition.lat, currentPosition.lng).catch(() => null);
+                if (liveWeather) {
+                    setWeather(liveWeather);
+                }
+
+                const weatherSnapshot = liveWeather || weatherRef.current;
+                const deviation = monitorRouteDeviation(currentPosition, activeJourney);
+                const delay = await detectDelays(activeJourney, currentPosition);
+                const snapshot = buildCopilotSnapshot({
+                    journey: activeJourney,
+                    position: currentPosition,
+                    weather: weatherSnapshot,
+                    deviation,
+                    delay,
+                });
+
+                if (!snapshot) return;
+
+                const heuristic = getHeuristicCopilotSuggestion(snapshot);
+                const aiSuggestion = await askJourneyCopilot(snapshot);
+                const nextSuggestion = aiSuggestion
+                    ? { ...(heuristic || {}), ...aiSuggestion, source: aiSuggestion.source || "ai", interruptible: true }
+                    : heuristic;
+
+                if (!nextSuggestion) return;
+
+                const signature = [
+                    nextSuggestion.summary,
+                    nextSuggestion.action,
+                    nextSuggestion.urgency,
+                    snapshot.distanceRemainingMeters,
+                    snapshot.delayMinutes,
+                ].join(":");
+
+                if (signature === copilotSignatureRef.current) return;
+
+                copilotSignatureRef.current = signature;
+                setCopilotSuggestion(nextSuggestion);
+            } finally {
+                copilotBusyRef.current = false;
+            }
+        }, 25000);
+
+        return () => clearInterval(intervalId);
+    }, [journeyActive, copilotEnabled, currentJourney?.destination?.lat, userLocation]);
 
     // Save location to Supabase whenever it changes
     useEffect(() => {
@@ -334,6 +419,15 @@ export default function DashboardPage() {
     const handleDismissReroute = useCallback(() => {
         setRerouteSuggestion(null);
         lastSuggestionRef.current = Date.now();
+    }, []);
+
+    const handleToggleCopilot = useCallback(() => {
+        setCopilotEnabled((value) => !value);
+    }, []);
+
+    const handleDismissCopilot = useCallback(() => {
+        setCopilotSuggestion(null);
+        copilotSignatureRef.current = "";
     }, []);
 
     if (!isLoaded) {
@@ -901,6 +995,15 @@ export default function DashboardPage() {
 
                 {/* SOS Emergency Button */}
                 <SOSButton dbUser={dbUser} userLocation={effectiveUserLocation} />
+
+                <ContinuousCopilotPanel
+                    visible={journeyActive}
+                    journeyActive={journeyActive}
+                    copilotEnabled={copilotEnabled}
+                    suggestion={copilotSuggestion}
+                    onToggle={handleToggleCopilot}
+                    onDismiss={handleDismissCopilot}
+                />
 
                 {rerouteSuggestion && (
                     <div

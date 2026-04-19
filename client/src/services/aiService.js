@@ -168,6 +168,61 @@ function buildSafetyModeContext(safeMode) {
     return "\n\n[SAFE MODE]\nUser prioritizes safety over speed/cost. Favor well-lit, high-traffic, lower-risk routes even when they take longer or cost more. Avoid nightRisk areas and low-safety walking segments whenever possible.";
 }
 
+export async function askJourneyCopilot(snapshot) {
+    if (!snapshot) return null;
+    if (!GROQ_API_KEY || GROQ_API_KEY === "gsk_REPLACE_WITH_YOUR_GROQ_KEY") {
+        return null;
+    }
+
+    const systemPrompt = `You are continuously assisting during a live journey.
+Respond in JSON only using this schema:
+{
+  "summary": "short live suggestion",
+  "action": "single clear action for the traveler",
+  "reason": "brief reason grounded in current live conditions",
+  "urgency": "low | medium | high",
+  "interruptible": true
+}
+
+Rules:
+- Be brief and practical.
+- Focus on immediate next-step guidance.
+- Examples: "Get down at next stop", "Stay on current route", "Use a covered exit", "Prepare for a reroute".
+- Do not invent unavailable live data.
+- If nothing urgent is happening, reassure the user and tell them what to keep watching.`;
+
+    const userPrompt = `Live journey snapshot:
+${JSON.stringify(snapshot, null, 2)}`;
+
+    try {
+        const res = await fetch(GROQ_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${GROQ_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model: MODEL,
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt },
+                ],
+                temperature: 0.3,
+                max_tokens: 220,
+                response_format: { type: "json_object" },
+            }),
+        });
+
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        return content ? JSON.parse(content) : null;
+    } catch {
+        return null;
+    }
+}
+
 export async function askMargDarshak(userMessage, chatHistory = [], userLocation = null, weatherContext = "", intentContext = "", preferences = null, safeMode = false) {
     if (!GROQ_API_KEY || GROQ_API_KEY === "gsk_REPLACE_WITH_YOUR_GROQ_KEY") {
         return {
