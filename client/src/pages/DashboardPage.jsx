@@ -21,6 +21,7 @@ import WeatherBadge from "../components/WeatherBadge";
 import IntentInput from "../components/IntentInput";
 import AIChat from "../components/AIChat";
 import SavedRoutes from "../components/SavedRoutes";
+import TravelAnalyticsPanel from "../components/TravelAnalyticsPanel";
 import MapView from "../components/MapView";
 import RoutePanel from "../components/RoutePanel";
 import SOSButton from "../components/SOSButton";
@@ -760,6 +761,8 @@ export default function DashboardPage() {
                     dbUser={dbUser}
                     onSelectRoute={handleSavedRouteSelect}
                 />
+
+                <TravelAnalyticsPanel dbUser={dbUser} />
 
                 {/* AI Chat */}
                 <AIChat
