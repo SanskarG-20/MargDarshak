@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { BrowserRouter } from "react-router-dom";
 import { ClerkAvailableProvider } from "./hooks/useClerkAvailable";
+import { JourneyProvider } from "./context/JourneyContext";
 import App from "./App.jsx";
 import "leaflet/dist/leaflet.css";
 import "./styles/global.css";
@@ -37,11 +38,13 @@ if (!clerkReady) {
 }
 
 function Providers({ children }) {
-  const inner = (
-    <ClerkAvailableProvider available={clerkReady}>
-      <BrowserRouter>{children}</BrowserRouter>
-    </ClerkAvailableProvider>
-  );
+    const inner = (
+        <JourneyProvider>
+            <ClerkAvailableProvider available={clerkReady}>
+                <BrowserRouter>{children}</BrowserRouter>
+            </ClerkAvailableProvider>
+        </JourneyProvider>
+    );
 
   if (clerkReady) {
     return (

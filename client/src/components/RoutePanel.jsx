@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Y, BK, WH } from "../constants/theme";
 import { compareRoutes } from "../services/routeService";
+import { useJourney } from "../context/JourneyContext";
 import ComparePanel from "./ComparePanel";
 
 /** Minimal SVG icons for each travel mode */
@@ -63,22 +64,27 @@ export default function RoutePanel({
     usePreferences = false,
     preferences = null,
 }) {
-    const [selectedPlace, setSelectedPlace] = useState(null);
-    const [routes, setRoutes] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [isFallback, setIsFallback] = useState(false);
     const [compareMode, setCompareMode] = useState(false);
     const [selectedForCompare, setSelectedForCompare] = useState([]);
     const [showComparePanel, setShowComparePanel] = useState(false);
+    const { currentJourney, setCurrentJourney } = useJourney();
 
     const validMarkers = markers.filter((m) => m.lat && m.lng);
+    const selectedPlace = currentJourney?.destination?.name || null;
+    const routes = currentJourney?.routes || null;
+    const isFallback = !!currentJourney?.usingFallback;
+    const selectedJourneyKey = useMemo(() => {
+        if (!currentJourney?.destination?.name) return "none";
+        return currentJourney.destination.name + ":" + (currentJourney.startedAt || "0");
+    }, [currentJourney?.destination?.name, currentJourney?.startedAt]);
 
     useEffect(() => {
         setSelectedForCompare([]);
         setCompareMode(false);
         setShowComparePanel(false);
-    }, [routes]);
+    }, [selectedJourneyKey]);
 
     const toggleCompareSelect = (mode) => {
         setSelectedForCompare((prev) => {
@@ -97,11 +103,8 @@ export default function RoutePanel({
     const handleCalculate = async (marker) => {
         if (!userLocation?.lat || !userLocation?.lng) return;
 
-        setSelectedPlace(marker.name);
         setLoading(true);
         setError(null);
-        setRoutes(null);
-        setIsFallback(false);
 
         const result = await compareRoutes(
             userLocation.lat,
@@ -116,17 +119,35 @@ export default function RoutePanel({
         if (result.error) {
             setError(result.message);
         } else {
-            setRoutes(result.modes);
-            setIsFallback(!!result.usingFallback);
-            // Pass the best route geometry to map
             const bestRoute = result.modes.find((m) => m.isBest);
             const routeWithGeometry = result.modes.find((m) => m.geometry?.length > 0);
-            onRouteCalculated?.({
+            const journey = {
+                id: "journey-" + Date.now(),
+                origin: {
+                    lat: userLocation.lat,
+                    lng: userLocation.lng,
+                },
+                destination: {
+                    name: marker.name,
+                    lat: marker.lat,
+                    lng: marker.lng,
+                },
+                routes: result.modes,
+                bestRoute: bestRoute || result.modes[0] || null,
                 geometry: bestRoute?.geometry?.length > 0
                     ? bestRoute.geometry
                     : routeWithGeometry?.geometry || [],
-                destination: marker,
-            });
+                usingFallback: !!result.usingFallback,
+                startedAt: Date.now(),
+                lastKnownPosition: {
+                    lat: userLocation.lat,
+                    lng: userLocation.lng,
+                },
+                status: "active",
+            };
+
+            setCurrentJourney(journey);
+            onRouteCalculated?.(journey);
         }
     };
 

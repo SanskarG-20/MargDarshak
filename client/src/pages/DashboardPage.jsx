@@ -1,12 +1,18 @@
 import { UserButton, useUser } from "@clerk/clerk-react";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Y, BK, WH } from "../constants/theme";
+import { useJourney } from "../context/JourneyContext";
 import useUserSync from "../hooks/useUserSync";
 import useGeolocation from "../hooks/useGeolocation";
 import { saveUserLocation } from "../services/supabaseClient";
 import { fetchWeatherAndAQI, buildWeatherContext } from "../services/weatherService";
 import { saveEnvironmentLog } from "../services/supabaseClient";
 import { getUserPreferences, updatePreferencesFromHistory } from "../services/personalizationService";
+import {
+    detectDelays,
+    monitorRouteDeviation,
+    suggestBetterRoute,
+} from "../services/liveRoutingService";
 import { isOfflineFlagSet } from "../utils/offlineCache";
 import Cursor from "../components/Cursor";
 import LocationBar from "../components/LocationBar";
@@ -22,8 +28,10 @@ import useOnboardingTour, { TOUR_STEPS } from "../hooks/useOnboardingTour";
 
 export default function DashboardPage() {
     const { user, isLoaded } = useUser();
+    const { currentJourney, setCurrentJourney } = useJourney();
     const { dbUser } = useUserSync();
     const { location: userLocation, city, loading: geoLoading, permissionDenied, setManualCity } = useGeolocation();
+    const [liveJourneyLocation, setLiveJourneyLocation] = useState(null);
     const [aiActive, setAiActive] = useState(false);
     const [mapActive, setMapActive] = useState(false);
     const [mapMarkers, setMapMarkers] = useState([]);
@@ -37,7 +45,33 @@ export default function DashboardPage() {
     const [usePreferences, setUsePreferences] = useState(true);
     const [preferences, setPreferences] = useState(null);
     const [prefLoading, setPrefLoading] = useState(false);
+    const [rerouteSuggestion, setRerouteSuggestion] = useState(null);
     const { tourActive, currentStep, totalSteps, next, skip } = useOnboardingTour();
+    const lastLiveCheckRef = useRef(0);
+    const lastSuggestionRef = useRef(0);
+    const suggestionSignatureRef = useRef("");
+    const liveMonitorBusyRef = useRef(false);
+    const currentJourneyRef = useRef(currentJourney);
+    const rerouteSuggestionRef = useRef(rerouteSuggestion);
+    const preferencesRef = useRef(preferences);
+    const usePreferencesRef = useRef(usePreferences);
+    const effectiveUserLocation = liveJourneyLocation || userLocation;
+
+    useEffect(() => {
+        currentJourneyRef.current = currentJourney;
+    }, [currentJourney]);
+
+    useEffect(() => {
+        rerouteSuggestionRef.current = rerouteSuggestion;
+    }, [rerouteSuggestion]);
+
+    useEffect(() => {
+        preferencesRef.current = preferences;
+    }, [preferences]);
+
+    useEffect(() => {
+        usePreferencesRef.current = usePreferences;
+    }, [usePreferences]);
 
     // Detect browser online/offline events + check cache flag after AI calls
     useEffect(() => {
@@ -65,24 +99,118 @@ export default function DashboardPage() {
         };
     }, []);
 
+    useEffect(() => {
+        if (!currentJourney?.destination?.lat || !navigator.geolocation) return undefined;
+
+        const watchId = navigator.geolocation.watchPosition(
+            async (pos) => {
+                const now = Date.now();
+                if (now - lastLiveCheckRef.current < 8000) return;
+                lastLiveCheckRef.current = now;
+
+                const position = {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                };
+
+                setLiveJourneyLocation(position);
+                setCurrentJourney((prev) => prev ? {
+                    ...prev,
+                    lastKnownPosition: position,
+                } : prev);
+
+                if (liveMonitorBusyRef.current) return;
+                if (rerouteSuggestionRef.current) return;
+
+                liveMonitorBusyRef.current = true;
+                try {
+                    const activeJourney = currentJourneyRef.current;
+                    if (!activeJourney?.destination?.lat) return;
+
+                    const journeySnapshot = {
+                        ...activeJourney,
+                        lastKnownPosition: position,
+                    };
+
+                    const deviation = monitorRouteDeviation(position, journeySnapshot);
+                    const delay = await detectDelays(journeySnapshot, position);
+                    const shouldRecalculate = deviation.shouldRecalculate || delay.shouldRecalculate;
+
+                    if (!shouldRecalculate) return;
+                    if (now - lastSuggestionRef.current < 45000) return;
+
+                    const suggestion = await suggestBetterRoute(
+                        position,
+                        journeySnapshot,
+                        usePreferencesRef.current ? preferencesRef.current : null
+                    );
+
+                    if (!suggestion) return;
+
+                    const signature = [
+                        suggestion.nextBest?.mode,
+                        suggestion.improvement?.minutes,
+                        suggestion.improvement?.cost,
+                        Math.round(position.lat * 1000),
+                        Math.round(position.lng * 1000),
+                    ].join(":");
+
+                    if (signature === suggestionSignatureRef.current) return;
+
+                    suggestionSignatureRef.current = signature;
+                    lastSuggestionRef.current = now;
+                    setRerouteSuggestion({
+                        ...suggestion,
+                        triggerReason: deviation.reason || delay.reason || "Route conditions changed.",
+                    });
+                } finally {
+                    liveMonitorBusyRef.current = false;
+                }
+            },
+            (err) => {
+                console.warn("[MargDarshak Live Routing] watchPosition failed:", err.message);
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 5000,
+                timeout: 12000,
+            }
+        );
+
+        return () => {
+            navigator.geolocation.clearWatch(watchId);
+        };
+    }, [
+        currentJourney?.destination?.lat,
+        currentJourney?.destination?.lng,
+        setCurrentJourney,
+    ]);
+
+    useEffect(() => {
+        if (currentJourney) return;
+        setLiveJourneyLocation(null);
+        setRerouteSuggestion(null);
+        suggestionSignatureRef.current = "";
+    }, [currentJourney]);
+
     // Save location to Supabase whenever it changes
     useEffect(() => {
-        if (dbUser?.id && userLocation?.lat && userLocation?.lng) {
+        if (dbUser?.id && effectiveUserLocation?.lat && effectiveUserLocation?.lng) {
             saveUserLocation({
                 userId: dbUser.id,
-                lat: userLocation.lat,
-                lng: userLocation.lng,
+                lat: effectiveUserLocation.lat,
+                lng: effectiveUserLocation.lng,
                 city: city || null,
             });
         }
-    }, [dbUser?.id, userLocation?.lat, userLocation?.lng, city]);
+    }, [dbUser?.id, effectiveUserLocation?.lat, effectiveUserLocation?.lng, city]);
 
     // Fetch weather + AQI when location is available
     useEffect(() => {
-        if (!userLocation?.lat || !userLocation?.lng) return;
+        if (!effectiveUserLocation?.lat || !effectiveUserLocation?.lng) return;
 
         setWeatherLoading(true);
-        fetchWeatherAndAQI(userLocation.lat, userLocation.lng)
+        fetchWeatherAndAQI(effectiveUserLocation.lat, effectiveUserLocation.lng)
             .then((data) => {
                 if (data) {
                     setWeather(data);
@@ -104,13 +232,13 @@ export default function DashboardPage() {
                 }
             })
             .finally(() => setWeatherLoading(false));
-    }, [userLocation?.lat, userLocation?.lng, dbUser?.id]);
+    }, [effectiveUserLocation?.lat, effectiveUserLocation?.lng, dbUser?.id]);
 
     // Build location context object for AI
     const aiLocationContext = useMemo(() => {
-        if (!userLocation) return null;
-        return { lat: userLocation.lat, lng: userLocation.lng, city: city || null };
-    }, [userLocation, city]);
+        if (!effectiveUserLocation) return null;
+        return { lat: effectiveUserLocation.lat, lng: effectiveUserLocation.lng, city: city || null };
+    }, [effectiveUserLocation, city]);
 
     // Build weather context string for AI
     const weatherCtx = useMemo(() => buildWeatherContext(weather), [weather]);
@@ -166,11 +294,39 @@ export default function DashboardPage() {
         }
     }, []);
 
-    const handleRouteCalculated = useCallback((routeData) => {
-        if (routeData?.geometry?.length > 0) {
-            setRouteGeometry(routeData.geometry);
+    const handleRouteCalculated = useCallback((journey) => {
+        if (journey?.geometry?.length > 0) {
+            setRouteGeometry(journey.geometry);
+        } else {
+            setRouteGeometry([]);
         }
         setRouteActive(true);
+    }, []);
+
+    useEffect(() => {
+        if (!currentJourney) return;
+
+        if (currentJourney.geometry?.length > 0) {
+            setRouteGeometry(currentJourney.geometry);
+        } else {
+            setRouteGeometry([]);
+        }
+        setRouteActive(true);
+    }, [currentJourney]);
+
+    const handleAcceptReroute = useCallback(() => {
+        if (!rerouteSuggestion?.journey) return;
+
+        setCurrentJourney(rerouteSuggestion.journey);
+        setRouteGeometry(rerouteSuggestion.journey.geometry || []);
+        setRouteActive(true);
+        setRerouteSuggestion(null);
+        suggestionSignatureRef.current = "";
+    }, [rerouteSuggestion, setCurrentJourney]);
+
+    const handleDismissReroute = useCallback(() => {
+        setRerouteSuggestion(null);
+        lastSuggestionRef.current = Date.now();
     }, []);
 
     if (!isLoaded) {
@@ -451,7 +607,7 @@ export default function DashboardPage() {
 
                 {/* Location Bar */}
                 <LocationBar
-                    location={userLocation}
+                    location={effectiveUserLocation}
                     city={city}
                     loading={geoLoading}
                     permissionDenied={permissionDenied}
@@ -542,7 +698,7 @@ export default function DashboardPage() {
 
                 {/* Map */}
                 <MapView
-                    userLocation={userLocation}
+                    userLocation={effectiveUserLocation}
                     markers={mapMarkers}
                     routeGeometry={routeGeometry}
                     onMapReady={() => setMapActive(true)}
@@ -552,7 +708,7 @@ export default function DashboardPage() {
 
                 {/* Route Intelligence */}
                 <RoutePanel
-                    userLocation={userLocation}
+                    userLocation={effectiveUserLocation}
                     markers={mapMarkers}
                     onRouteCalculated={handleRouteCalculated}
                     usePreferences={usePreferences}
@@ -560,7 +716,109 @@ export default function DashboardPage() {
                 />
 
                 {/* SOS Emergency Button */}
-                <SOSButton dbUser={dbUser} userLocation={userLocation} />
+                <SOSButton dbUser={dbUser} userLocation={effectiveUserLocation} />
+
+                {rerouteSuggestion && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            bottom: 24,
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            zIndex: 250,
+                            width: "min(92vw, 520px)",
+                            border: `1px solid rgba(204,255,0,.28)`,
+                            background: "rgba(0,0,0,.92)",
+                            backdropFilter: "blur(10px)",
+                            padding: "14px 16px",
+                            boxShadow: "0 18px 48px rgba(0,0,0,.32)",
+                            animation: "ldm-step-in 0.25s ease both",
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 12,
+                                marginBottom: 8,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    fontFamily: "'Bebas Neue',sans-serif",
+                                    fontSize: 16,
+                                    letterSpacing: 1.6,
+                                    color: Y,
+                                }}
+                            >
+                                {rerouteSuggestion.summary || "Better route found — switch?"}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={handleDismissReroute}
+                                style={{
+                                    border: "none",
+                                    background: "transparent",
+                                    color: "rgba(255,255,255,.45)",
+                                    fontSize: 18,
+                                    cursor: "pointer",
+                                    lineHeight: 1,
+                                }}
+                            >
+                                {"\u00D7"}
+                            </button>
+                        </div>
+                        <div
+                            style={{
+                                fontFamily: "'DM Sans',sans-serif",
+                                fontSize: 12,
+                                lineHeight: 1.5,
+                                color: "rgba(255,255,255,.62)",
+                                marginBottom: 10,
+                            }}
+                        >
+                            {rerouteSuggestion.triggerReason}
+                            {rerouteSuggestion.nextBest?.label
+                                ? ` Suggested mode: ${rerouteSuggestion.nextBest.label}.`
+                                : ""}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                            <button
+                                type="button"
+                                onClick={handleDismissReroute}
+                                style={{
+                                    border: "1px solid rgba(255,255,255,.14)",
+                                    background: "transparent",
+                                    color: "rgba(255,255,255,.72)",
+                                    padding: "7px 12px",
+                                    fontFamily: "'Bebas Neue',sans-serif",
+                                    fontSize: 13,
+                                    letterSpacing: 1.1,
+                                    cursor: "pointer",
+                                }}
+                            >
+                                KEEP CURRENT
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleAcceptReroute}
+                                style={{
+                                    border: `1px solid ${Y}`,
+                                    background: Y,
+                                    color: BK,
+                                    padding: "7px 12px",
+                                    fontFamily: "'Bebas Neue',sans-serif",
+                                    fontSize: 13,
+                                    letterSpacing: 1.1,
+                                    cursor: "pointer",
+                                }}
+                            >
+                                SWITCH ROUTE
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {tourActive && (
                     <OnboardingTour
