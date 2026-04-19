@@ -5,8 +5,8 @@ import useUserSync from "../hooks/useUserSync";
 import useGeolocation from "../hooks/useGeolocation";
 import { saveUserLocation } from "../services/supabaseClient";
 import { fetchWeatherAndAQI, buildWeatherContext } from "../services/weatherService";
-import { getEnvironmentSummary } from "../services/environmentService";
 import { saveEnvironmentLog } from "../services/supabaseClient";
+import { getUserPreferences, updatePreferencesFromHistory } from "../services/personalizationService";
 import { isOfflineFlagSet } from "../utils/offlineCache";
 import Cursor from "../components/Cursor";
 import LocationBar from "../components/LocationBar";
@@ -34,6 +34,9 @@ export default function DashboardPage() {
     const [showAQI, setShowAQI] = useState(false);
     const [pendingQuery, setPendingQuery] = useState(null);
     const [offline, setOffline] = useState(!navigator.onLine);
+    const [usePreferences, setUsePreferences] = useState(true);
+    const [preferences, setPreferences] = useState(null);
+    const [prefLoading, setPrefLoading] = useState(false);
     const { tourActive, currentStep, totalSteps, next, skip } = useOnboardingTour();
 
     // Detect browser online/offline events + check cache flag after AI calls
@@ -115,6 +118,34 @@ export default function DashboardPage() {
     const handleSavedRouteSelect = useCallback((source, destination) => {
         setPendingQuery({ text: `Best route from ${source} to ${destination}`, ts: Date.now() });
     }, []);
+
+    const refreshPreferences = useCallback(async () => {
+        if (!dbUser?.id) {
+            setPreferences(null);
+            return;
+        }
+
+        setPrefLoading(true);
+        try {
+            const updated = await updatePreferencesFromHistory(dbUser.id);
+            if (updated) {
+                setPreferences(updated);
+            } else {
+                const existing = await getUserPreferences(dbUser.id);
+                setPreferences(existing);
+            }
+        } catch (err) {
+            console.warn("[MargDarshak Personalization] Preference refresh failed:", err);
+            const existing = await getUserPreferences(dbUser.id);
+            setPreferences(existing);
+        } finally {
+            setPrefLoading(false);
+        }
+    }, [dbUser?.id]);
+
+    useEffect(() => {
+        refreshPreferences();
+    }, [refreshPreferences]);
 
     const handleAIResponse = useCallback((parsedResult) => {
         setAiActive(true);
@@ -451,7 +482,63 @@ export default function DashboardPage() {
                     weatherContext={weatherCtx}
                     weather={weather}
                     pendingQuery={pendingQuery}
+                    usePreferences={usePreferences}
+                    preferences={preferences}
+                    onBehaviorTracked={refreshPreferences}
                 />
+
+                <div
+                    style={{
+                        marginTop: 10,
+                        marginBottom: 18,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: 10,
+                        padding: "10px 12px",
+                        border: "1px solid rgba(255,255,255,.08)",
+                        background: "rgba(255,255,255,.02)",
+                    }}
+                >
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{
+                            fontFamily: "'Bebas Neue',sans-serif",
+                            fontSize: 14,
+                            letterSpacing: 1.5,
+                            color: Y,
+                        }}>
+                            USE MY PREFERENCES
+                        </span>
+                        <span style={{
+                            fontFamily: "'DM Sans',sans-serif",
+                            fontSize: 11,
+                            color: "rgba(255,255,255,.45)",
+                        }}>
+                            {prefLoading
+                                ? "Learning from your recent behavior..."
+                                : preferences
+                                    ? `Routes and explanations adapt to your travel patterns${Number.isFinite(preferences.preferred_time_of_travel) ? ` · usual travel time ${String(preferences.preferred_time_of_travel).padStart(2, "0")}:00` : ""}`
+                                    : "No user behavior data yet — defaults remain active"}
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setUsePreferences((v) => !v)}
+                        style={{
+                            border: `1px solid ${usePreferences ? Y : "rgba(255,255,255,.2)"}`,
+                            color: usePreferences ? BK : "rgba(255,255,255,.7)",
+                            background: usePreferences ? Y : "transparent",
+                            padding: "6px 12px",
+                            fontFamily: "'Bebas Neue',sans-serif",
+                            fontSize: 13,
+                            letterSpacing: 1.2,
+                            cursor: "pointer",
+                        }}
+                    >
+                        {usePreferences ? "ON" : "OFF"}
+                    </button>
+                </div>
 
                 {/* Map */}
                 <MapView
@@ -468,6 +555,8 @@ export default function DashboardPage() {
                     userLocation={userLocation}
                     markers={mapMarkers}
                     onRouteCalculated={handleRouteCalculated}
+                    usePreferences={usePreferences}
+                    preferences={preferences}
                 />
 
                 {/* SOS Emergency Button */}

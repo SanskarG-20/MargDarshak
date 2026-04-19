@@ -11,6 +11,7 @@ import { evaluateBus } from "./busService.js";
 import { evaluateTrain } from "./trainService.js";
 import { attachSafetyToModes } from "./safetyService.js";
 import { attachEcoScores } from "./ecoScoreService.js";
+import { applyPreferencesToRoutes } from "./personalizationService.js";
 import { cacheRoute, getCachedRoute, setOfflineFlag } from "../utils/offlineCache.js";
 
 const ORS_API_KEY = import.meta.env.VITE_ORS_API_KEY;
@@ -137,7 +138,7 @@ function buildModes(distanceKm) {
  * Compare Walk vs Cab vs Transit between two coordinates.
  * Uses ORS for real road distance; falls back to haversine if ORS fails.
  */
-export async function compareRoutes(startLat, startLng, endLat, endLng) {
+export async function compareRoutes(startLat, startLng, endLat, endLng, preferences = null) {
     let distanceKm;
     let geometry = [];
     let usingFallback = false;
@@ -227,38 +228,6 @@ export async function compareRoutes(startLat, startLng, endLat, endLng) {
         });
     }
 
-    // Best option: lowest (costAmount + durationSec/60) score
-    // Walk excluded from "best" if > 2 km
-    // Metro gets a bonus (-5 points) for 5-25 km range (preferred medium distance)
-    let bestMode = null;
-    let bestScore = Infinity;
-
-    modes.forEach(function(m) {
-        if (m.mode === "walk" && distanceKm > 2) return;
-        var score = m.costAmount + m.durationSec / 60;
-        // Metro / Train bonus: prefer public transit for medium distances (5-25 km)
-        if ((m.mode === "metro" || m.mode === "train") && distanceKm >= 5 && distanceKm <= 25) {
-            score -= 5;
-        }
-        if (score < bestScore) {
-            bestScore = score;
-            bestMode = m.mode;
-        }
-    });
-
-    // Fallback: if walk > 2km was the only option evaluated, re-evaluate all
-    if (!bestMode) {
-        modes.forEach(function(m) {
-            var score = m.costAmount + m.durationSec / 60;
-            if (score < bestScore) {
-                bestScore = score;
-                bestMode = m.mode;
-            }
-        });
-    }
-
-    modes.forEach(function(m) { m.isBest = m.mode === bestMode; });
-
     // Attach safety intelligence to each mode
     try {
         attachSafetyToModes(modes, startLat, startLng, endLat, endLng);
@@ -273,7 +242,47 @@ export async function compareRoutes(startLat, startLng, endLat, endLng) {
         console.warn("[MargDarshak Route] Eco score evaluation failed:", err);
     }
 
-    const result = { modes: modes, distanceKm: distanceKm, usingFallback: usingFallback, error: false };
+    // Baseline score: cost + eta with public transit preference in medium distance
+    const scoredInput = modes.map(function(m) {
+        var baseScore = m.costAmount + m.durationSec / 60;
+        if ((m.mode === "metro" || m.mode === "train") && distanceKm >= 5 && distanceKm <= 25) {
+            baseScore -= 5;
+        }
+        return {
+            ...m,
+            baseScore: baseScore,
+        };
+    });
+
+    const scoredModes = applyPreferencesToRoutes(scoredInput, preferences);
+
+    // Final best option uses personalized score when available, baseline otherwise.
+    let bestMode = null;
+    let bestScore = Infinity;
+
+    scoredModes.forEach(function(m) {
+        if (m.mode === "walk" && distanceKm > 2) return;
+        var score = Number.isFinite(m.personalizedScore) ? m.personalizedScore : m.baseScore;
+        if (score < bestScore) {
+            bestScore = score;
+            bestMode = m.mode;
+        }
+    });
+
+    // Fallback: if walk > 2km was the only option evaluated, re-evaluate all.
+    if (!bestMode) {
+        scoredModes.forEach(function(m) {
+            var score = Number.isFinite(m.personalizedScore) ? m.personalizedScore : m.baseScore;
+            if (score < bestScore) {
+                bestScore = score;
+                bestMode = m.mode;
+            }
+        });
+    }
+
+    scoredModes.forEach(function(m) { m.isBest = m.mode === bestMode; });
+
+    const result = { modes: scoredModes, distanceKm: distanceKm, usingFallback: usingFallback, error: false };
 
     // Cache successful route result
     cacheRoute(result);

@@ -97,7 +97,56 @@ SAFETY INTELLIGENCE Rules:
 - Metro stations are generally safe (CCTV, security staff).
 - Include a safetyNote field in each transportOption when relevant.`;
 
-export async function askMargDarshak(userMessage, chatHistory = [], userLocation = null, weatherContext = "", intentContext = "") {
+function formatModeLabel(mode) {
+    const key = String(mode || "").toLowerCase();
+    if (key === "transit") return "bus/transit";
+    if (key === "cab") return "cab/auto";
+    return key;
+}
+
+function buildPreferenceContext(preferences) {
+    if (!preferences || typeof preferences !== "object") return "";
+
+    const preferredModesObj = preferences.preferred_modes || {};
+    const preferredModes = Object.entries(preferredModesObj)
+        .filter(function(entry) {
+            return Number(entry[1]) > 0;
+        })
+        .sort(function(a, b) {
+            return Number(b[1]) - Number(a[1]);
+        })
+        .slice(0, 2)
+        .map(function(entry) {
+            return formatModeLabel(entry[0]);
+        });
+
+    const hasBehaviorData = preferredModes.length > 0 || preferences.avg_budget != null;
+    if (!hasBehaviorData) return "";
+
+    const budgetValue = Number(preferences.avg_budget);
+    const budgetText = Number.isFinite(budgetValue) ? String(Math.round(budgetValue)) : "flexible";
+
+    const safetyPriorityRaw = Number(preferences.safety_priority);
+    const safetyPriority = Number.isFinite(safetyPriorityRaw)
+        ? Math.max(0, Math.min(1, safetyPriorityRaw)).toFixed(2)
+        : "0.50";
+
+    const ecoPriorityRaw = Number(preferences.eco_priority);
+    const ecoPriority = Number.isFinite(ecoPriorityRaw)
+        ? Math.max(0, Math.min(1, ecoPriorityRaw)).toFixed(2)
+        : "0.50";
+
+    const modeText = preferredModes.length > 0 ? preferredModes.join(", ") : "balanced multi-modal travel";
+
+    return "\n\n[USER PERSONALIZATION]\n" +
+        "You are assisting a user who prefers " + modeText +
+        ", budget ~₹" + budgetText +
+        ", safety priority " + safetyPriority +
+        ", eco priority " + ecoPriority +
+        ". Use these as soft preferences and still optimize for practical route quality.";
+}
+
+export async function askMargDarshak(userMessage, chatHistory = [], userLocation = null, weatherContext = "", intentContext = "", preferences = null) {
     if (!GROQ_API_KEY || GROQ_API_KEY === "gsk_REPLACE_WITH_YOUR_GROQ_KEY") {
         return {
             error: true,
@@ -117,8 +166,10 @@ export async function askMargDarshak(userMessage, chatHistory = [], userLocation
         }
     }
 
+    const preferenceContext = buildPreferenceContext(preferences);
+
     const messages = [
-        { role: "system", content: SYSTEM_PROMPT + locationContext + weatherContext + intentContext },
+        { role: "system", content: SYSTEM_PROMPT + locationContext + weatherContext + intentContext + preferenceContext },
         ...chatHistory.slice(-6).map((m) => ({
             role: m.role,
             content: m.content,

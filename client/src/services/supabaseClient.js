@@ -93,12 +93,28 @@ export async function createTrip({ userId, intent, origin, destination }) {
 /**
  * Save an AI prompt/response pair for the given Supabase user ID.
  */
-export async function saveAIHistory({ userId, prompt, response }) {
+export async function saveAIHistory({ userId, prompt, response, detectedMode = null, estimatedCost = null, travelHour = null }) {
     if (!supabase) return null;
+
+    const normalizedCost = Number.isFinite(Number(estimatedCost))
+        ? Number(estimatedCost)
+        : null;
+    const normalizedHour = Number.isInteger(Number(travelHour))
+        && Number(travelHour) >= 0
+        && Number(travelHour) <= 23
+        ? Number(travelHour)
+        : null;
 
     const { data, error } = await supabase
         .from("ai_history")
-        .insert({ user_id: userId, prompt, response })
+        .insert({
+            user_id: userId,
+            prompt,
+            response,
+            detected_mode: detectedMode,
+            estimated_cost: normalizedCost,
+            travel_hour: normalizedHour,
+        })
         .select()
         .single();
 
@@ -232,8 +248,15 @@ export async function saveEnvironmentLog({ userId, temperature, weather, weather
 /**
  * Save a trip (source + destination + preferred mode).
  */
-export async function saveTrip({ userId, source, destination, preferredMode }) {
+export async function saveTrip({ userId, source, destination, preferredMode, estimatedCost = null, travelHour = null }) {
     if (!supabase) return null;
+
+    const normalizedCost = Number.isFinite(Number(estimatedCost)) ? Number(estimatedCost) : null;
+    const normalizedHour = Number.isInteger(Number(travelHour))
+        && Number(travelHour) >= 0
+        && Number(travelHour) <= 23
+        ? Number(travelHour)
+        : null;
 
     const { data, error } = await supabase
         .from("saved_trips")
@@ -242,6 +265,8 @@ export async function saveTrip({ userId, source, destination, preferredMode }) {
             source,
             destination,
             preferred_mode: preferredMode || null,
+            estimated_cost: normalizedCost,
+            travel_hour: normalizedHour,
         })
         .select()
         .single();

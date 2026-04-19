@@ -56,7 +56,13 @@ function ModeIcon({ mode, size = 20, color = WH }) {
  *  - markers: [{ name, lat, lng }] — AI recommended places
  *  - onRouteCalculated: (routeData) => void — passes route geometry to map
  */
-export default function RoutePanel({ userLocation, markers = [], onRouteCalculated }) {
+export default function RoutePanel({
+    userLocation,
+    markers = [],
+    onRouteCalculated,
+    usePreferences = false,
+    preferences = null,
+}) {
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [routes, setRoutes] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -101,7 +107,8 @@ export default function RoutePanel({ userLocation, markers = [], onRouteCalculat
             userLocation.lat,
             userLocation.lng,
             marker.lat,
-            marker.lng
+            marker.lng,
+            usePreferences ? preferences : null
         );
 
         setLoading(false);

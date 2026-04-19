@@ -26,7 +26,60 @@ if (recognition) {
     recognition.lang = "en-IN";
 }
 
-export default function AIChat({ dbUser, onAIResponse, userLocation, weatherContext, weather, pendingQuery }) {
+function normalizeMode(mode) {
+    if (!mode) return null;
+    const value = String(mode).toLowerCase().trim();
+    if (value === "bus") return "transit";
+    if (value === "bus / transit") return "transit";
+    return value;
+}
+
+function parseCostValue(text, mode = "") {
+    const modeKey = String(mode).toLowerCase();
+    if (modeKey === "walk") return 0;
+    if (!text) return null;
+    const raw = String(text).toLowerCase();
+    if (raw.includes("free")) return 0;
+
+    const allNumbers = raw.match(/[\d,]+/g);
+    if (!allNumbers || allNumbers.length === 0) return null;
+
+    const parsed = allNumbers
+        .map((n) => Number(n.replace(/,/g, "")))
+        .filter((n) => Number.isFinite(n));
+    if (parsed.length === 0) return null;
+
+    if (parsed.length === 1) return parsed[0];
+    const total = parsed.reduce((sum, n) => sum + n, 0);
+    return Math.round(total / parsed.length);
+}
+
+function inferDetectedMode(result) {
+    if (!result?.transportOptions?.length) return null;
+    const best = result.transportOptions.find((o) => o.isBest) || result.transportOptions[0];
+    return normalizeMode(best?.mode);
+}
+
+function inferEstimatedCost(result) {
+    if (result?.transportOptions?.length) {
+        const best = result.transportOptions.find((o) => o.isBest) || result.transportOptions[0];
+        const fromRoute = parseCostValue(best?.cost, best?.mode);
+        if (fromRoute != null) return fromRoute;
+    }
+    return parseCostValue(result?.estimatedBudget);
+}
+
+export default function AIChat({
+    dbUser,
+    onAIResponse,
+    userLocation,
+    weatherContext,
+    weather,
+    pendingQuery,
+    usePreferences = false,
+    preferences = null,
+    onBehaviorTracked,
+}) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
@@ -128,7 +181,8 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
         ]);
         setLoading(true);
 
-        const result = await askMargDarshak(userMsg, messages, userLocation, weatherContext, intentPrompt);
+        const activePreferences = usePreferences ? preferences : null;
+        const result = await askMargDarshak(userMsg, messages, userLocation, weatherContext, intentPrompt, activePreferences);
         const aiContent = result.error
             ? result.summary
             : JSON.stringify(result);
@@ -144,11 +198,17 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
         }
 
         if (dbUser?.id && !result.error) {
+            const detectedMode = inferDetectedMode(result);
+            const estimatedCost = inferEstimatedCost(result);
             saveAIHistory({
                 userId: dbUser.id,
                 prompt: userMsg,
                 response: aiContent,
+                detectedMode,
+                estimatedCost,
+                travelHour: new Date().getHours(),
             });
+            onBehaviorTracked?.();
         }
     };
 
@@ -170,7 +230,8 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
         ]);
         setLoading(true);
 
-        const result = await askMargDarshak(userMsg, messages, userLocation, weatherContext, intentPrompt);
+        const activePreferences = usePreferences ? preferences : null;
+        const result = await askMargDarshak(userMsg, messages, userLocation, weatherContext, intentPrompt, activePreferences);
         const aiContent = result.error
             ? result.summary
             : JSON.stringify(result);
@@ -186,11 +247,17 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
         }
 
         if (dbUser?.id && !result.error) {
+            const detectedMode = inferDetectedMode(result);
+            const estimatedCost = inferEstimatedCost(result);
             saveAIHistory({
                 userId: dbUser.id,
                 prompt: userMsg,
                 response: aiContent,
+                detectedMode,
+                estimatedCost,
+                travelHour: new Date().getHours(),
             });
+            onBehaviorTracked?.();
         }
     };
 
@@ -329,7 +396,14 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
                                 </div>
                             </div>
                         ) : (
-                            <AIResponse msg={msg} weather={weather} dbUser={dbUser} />
+                            <AIResponse
+                                msg={msg}
+                                weather={weather}
+                                dbUser={dbUser}
+                                usePreferences={usePreferences}
+                                preferences={preferences}
+                                onBehaviorTracked={onBehaviorTracked}
+                            />
                         )}
                     </div>
                 ))}
@@ -431,7 +505,7 @@ export default function AIChat({ dbUser, onAIResponse, userLocation, weatherCont
     );
 }
 
-function AIResponse({ msg, weather, dbUser }) {
+function AIResponse({ msg, weather, dbUser, usePreferences = false, preferences = null, onBehaviorTracked }) {
     const data = msg.parsed;
 
     if (!data || data.error) {
@@ -655,7 +729,14 @@ function AIResponse({ msg, weather, dbUser }) {
 
             {/* Transport Options */}
             {data.transportOptions?.length > 0 && (
-                <TransportReveal options={data.transportOptions} weather={weather} dbUser={dbUser} />
+                <TransportReveal
+                    options={data.transportOptions}
+                    weather={weather}
+                    dbUser={dbUser}
+                    usePreferences={usePreferences}
+                    preferences={preferences}
+                    onBehaviorTracked={onBehaviorTracked}
+                />
             )}
 
             {/* Smart Suggestions — after route analysis */}
@@ -835,7 +916,7 @@ function enrichWithEco(options) {
     });
 }
 
-function TransportReveal({ options, weather, dbUser }) {
+function TransportReveal({ options, weather, dbUser, usePreferences = false, preferences = null, onBehaviorTracked }) {
     const [revealCount, setRevealCount] = useState(0);
     const [glowBest, setGlowBest] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -982,7 +1063,8 @@ function TransportReveal({ options, weather, dbUser }) {
             {glowBest && (() => {
                 const best = enrichedOptions.find((o) => o.isBest);
                 if (!best) return null;
-                const explanation = explainBestRoute(best, enrichedOptions, weather);
+                const activePreferences = usePreferences ? preferences : null;
+                const explanation = explainBestRoute(best, enrichedOptions, weather, activePreferences);
 
                 // Extract source/destination from the best option or first option with route info
                 const routeOpt = enrichedOptions.find((o) => o.boarding && o.destination && o.boarding !== o.destination) || best;
@@ -997,11 +1079,14 @@ function TransportReveal({ options, weather, dbUser }) {
                         source,
                         destination: dest,
                         preferredMode: best.mode || null,
+                        estimatedCost: parseCostValue(best.cost, best.mode),
+                        travelHour: new Date().getHours(),
                     });
                     setSaving(false);
                     if (result) {
                         setSaved(true);
                         window.dispatchEvent(new Event("savedtrips:refresh"));
+                        onBehaviorTracked?.();
                     }
                 };
 

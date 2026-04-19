@@ -50,6 +50,14 @@ function parseCostAmount(costStr) {
     return m ? parseInt(m[0].replace(/,/g, "")) : null;
 }
 
+function getPreferredModeWeight(preferredModes, mode) {
+    if (!preferredModes || !mode) return 0;
+    const key = mode.toLowerCase();
+    if (key === "bus") return Number(preferredModes.bus || preferredModes.transit || 0);
+    if (key === "transit") return Number(preferredModes.transit || preferredModes.bus || 0);
+    return Number(preferredModes[key] || 0);
+}
+
 /**
  * AQI label mapping.
  */
@@ -69,7 +77,7 @@ const AQI_LABELS = {
  * @param {Object|null} weather   - Weather data { aqi, aqiLabel, temperature, rainProbability, ... }
  * @returns {{ reasons: string[], summary: string }}
  */
-export function explainBestRoute(bestOption, allOptions, weather = null) {
+export function explainBestRoute(bestOption, allOptions, weather = null, preferences = null) {
     if (!bestOption || allOptions.length <= 1) {
         return { reasons: ["Only available transport option"], summary: "Single option available." };
     }
@@ -177,7 +185,32 @@ export function explainBestRoute(bestOption, allOptions, weather = null) {
         }
     }
 
-    // ── 7. Rain awareness ──────────────────────────────────────────
+    // ── 7. Personalization Context ─────────────────────────────────
+    const preferredModes = preferences?.preferred_modes || null;
+    const hasPersonalization =
+        (preferredModes && Object.keys(preferredModes).length > 0) ||
+        preferences?.avg_budget != null;
+
+    if (hasPersonalization) {
+        const modeWeight = getPreferredModeWeight(preferredModes, bestOption.mode);
+        const budget = preferences?.avg_budget;
+
+        if (modeWeight >= 0.2) {
+            reasons.unshift(
+                "Based on your past behavior, you usually prefer " +
+                (bestOption.label || bestOption.mode) + " routes."
+            );
+        } else if (budget != null && bestCost != null && bestCost <= budget) {
+            reasons.unshift(
+                "Based on your past behavior, this option fits your usual budget (~₹" +
+                Math.round(budget) + ")."
+            );
+        } else {
+            reasons.unshift("Based on your past behavior, this option aligns with your typical travel patterns.");
+        }
+    }
+
+    // ── 8. Rain awareness ──────────────────────────────────────────
     if (weather?.rainProbability > 50) {
         if (bestOption.mode === "cab" || bestOption.mode === "metro" || bestOption.mode === "train") {
             reasons.push("Sheltered from " + weather.rainProbability + "% rain probability");
