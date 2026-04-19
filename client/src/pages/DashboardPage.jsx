@@ -8,6 +8,7 @@ import { saveUserLocation } from "../services/supabaseClient";
 import { fetchWeatherAndAQI, buildWeatherContext } from "../services/weatherService";
 import { saveEnvironmentLog } from "../services/supabaseClient";
 import { getUserPreferences, updatePreferencesFromHistory } from "../services/personalizationService";
+import { getPredictiveTravelAlerts } from "../services/predictiveService";
 import {
     detectDelays,
     monitorRouteDeviation,
@@ -242,6 +243,10 @@ export default function DashboardPage() {
 
     // Build weather context string for AI
     const weatherCtx = useMemo(() => buildWeatherContext(weather), [weather]);
+    const predictiveContext = useMemo(
+        () => getPredictiveTravelAlerts({ weather, currentJourney }),
+        [weather, currentJourney]
+    );
 
     const handleSavedRouteSelect = useCallback((source, destination) => {
         setPendingQuery({ text: `Best route from ${source} to ${destination}`, ts: Date.now() });
@@ -620,6 +625,131 @@ export default function DashboardPage() {
                     loading={weatherLoading}
                     city={city}
                 />
+
+                {predictiveContext.summary && (
+                    <div
+                        style={{
+                            border: `1px solid ${predictiveContext.summary.severity === "high"
+                                ? "rgba(249,115,22,.42)"
+                                : "rgba(204,255,0,.24)"
+                                }`,
+                            borderLeft: `5px solid ${predictiveContext.summary.severity === "high"
+                                ? "#f97316"
+                                : Y
+                                }`,
+                            background: predictiveContext.summary.severity === "high"
+                                ? "rgba(249,115,22,.08)"
+                                : "rgba(204,255,0,.05)",
+                            padding: "16px 16px 14px",
+                            marginBottom: 24,
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 12,
+                                flexWrap: "wrap",
+                                marginBottom: 10,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    fontFamily: "'Bebas Neue',sans-serif",
+                                    fontSize: 17,
+                                    letterSpacing: 1.8,
+                                    color: predictiveContext.summary.severity === "high" ? "#f97316" : Y,
+                                }}
+                            >
+                                PREDICTIVE TRAVEL ALERTS
+                            </span>
+                            <span
+                                style={{
+                                    fontFamily: "'DM Sans',sans-serif",
+                                    fontSize: 11,
+                                    color: "rgba(255,255,255,.45)",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 1.4,
+                                }}
+                            >
+                                Rule-based forecast
+                            </span>
+                        </div>
+
+                        <div
+                            style={{
+                                fontFamily: "'DM Sans',sans-serif",
+                                fontSize: 14,
+                                lineHeight: 1.6,
+                                color: WH,
+                                marginBottom: predictiveContext.alerts.length > 0 ? 10 : 0,
+                            }}
+                        >
+                            {predictiveContext.summary.message}
+                        </div>
+
+                        {predictiveContext.alerts.length > 0 && (
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gap: 8,
+                                }}
+                            >
+                                {predictiveContext.alerts.map((alert) => (
+                                    <div
+                                        key={alert.id}
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "flex-start",
+                                            justifyContent: "space-between",
+                                            gap: 12,
+                                            padding: "10px 12px",
+                                            border: "1px solid rgba(255,255,255,.08)",
+                                            background: "rgba(0,0,0,.18)",
+                                            flexWrap: "wrap",
+                                        }}
+                                    >
+                                        <div style={{ flex: "1 1 260px" }}>
+                                            <div
+                                                style={{
+                                                    fontFamily: "'Bebas Neue',sans-serif",
+                                                    fontSize: 14,
+                                                    letterSpacing: 1.3,
+                                                    color: alert.severity === "high" ? "#f97316" : Y,
+                                                    marginBottom: 4,
+                                                }}
+                                            >
+                                                {alert.title}
+                                            </div>
+                                            <div
+                                                style={{
+                                                    fontFamily: "'DM Sans',sans-serif",
+                                                    fontSize: 12,
+                                                    color: "rgba(255,255,255,.72)",
+                                                    lineHeight: 1.5,
+                                                }}
+                                            >
+                                                {alert.message}
+                                            </div>
+                                        </div>
+                                        <div
+                                            style={{
+                                                flex: "0 1 180px",
+                                                fontFamily: "'DM Sans',sans-serif",
+                                                fontSize: 11,
+                                                color: "rgba(255,255,255,.48)",
+                                                lineHeight: 1.5,
+                                            }}
+                                        >
+                                            {alert.recommendation}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Intent Input */}
                 <IntentInput dbUser={dbUser} />
