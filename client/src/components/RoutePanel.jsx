@@ -63,6 +63,7 @@ export default function RoutePanel({
     onRouteCalculated,
     usePreferences = false,
     preferences = null,
+    safeMode = false,
 }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -111,7 +112,8 @@ export default function RoutePanel({
             userLocation.lng,
             marker.lat,
             marker.lng,
-            usePreferences ? preferences : null
+            usePreferences ? preferences : null,
+            { safeMode }
         );
 
         setLoading(false);
@@ -144,6 +146,7 @@ export default function RoutePanel({
                     lng: userLocation.lng,
                 },
                 status: "active",
+                safeMode,
             };
 
             setCurrentJourney(journey);
@@ -160,6 +163,21 @@ export default function RoutePanel({
                 <Dot color={routes ? "#22c55e" : Y} pulse={loading} />
                 ROUTE INTELLIGENCE
             </div>
+
+            {safeMode && (
+                <div style={{
+                    marginBottom: 14,
+                    padding: "10px 12px",
+                    border: "1px solid rgba(239,68,68,.22)",
+                    background: "rgba(239,68,68,.05)",
+                    fontFamily: "'DM Sans',sans-serif",
+                    fontSize: 12,
+                    color: "rgba(255,255,255,.72)",
+                    lineHeight: 1.5,
+                }}>
+                    Safety First Mode is active. Routes may take longer, but low-safety and night-risk segments are heavily penalized.
+                </div>
+            )}
 
             {/* Destination selector */}
             <div style={{ marginBottom: 16 }}>
@@ -344,6 +362,18 @@ export default function RoutePanel({
                                             route.ecoScore >= 50 ? "#06b6d4" :
                                             route.ecoScore > 0  ? "#eab308" :
                                             "rgba(255,255,255,.3)"
+                                        }
+                                    />
+                                )}
+                                {route.safeModeApplied && (
+                                    <StatItem
+                                        label="SAFE MODE"
+                                        value={route.safetyScore != null ? route.safetyScore + "/10" : "ON"}
+                                        highlight={false}
+                                        color={
+                                            route.safetyScore >= 8 ? "#22c55e" :
+                                            route.safetyScore >= 5 ? "#eab308" :
+                                            "#ef4444"
                                         }
                                     />
                                 )}

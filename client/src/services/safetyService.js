@@ -136,7 +136,13 @@ export function evaluateRouteSafety(startLat, startLng, endLat, endLng) {
     return {
         safetyScore: finalScore,
         isNight: night,
+        hasNightRisk,
         lowSafetyZones: lowZones,
+        encounteredZones: encounteredZones.map((zone) => ({
+            area: zone.area,
+            safetyScore: zone.safetyScore,
+            nightRisk: !!zone.nightRisk,
+        })),
         reasoning,
     };
 }
@@ -211,7 +217,82 @@ export function attachSafetyToModes(modes, startLat, startLng, endLat, endLng) {
 
         mode.safetyScore = modeScore;
         mode.safetyReasoning = modeReasoning;
+        mode.lowSafetyZones = safety.lowSafetyZones;
+        mode.nightRiskOnRoute = safety.hasNightRisk;
+        mode.isNightRoute = safety.isNight;
     }
 
     return safety;
+}
+
+export function getSafeRouteOnly(modes = []) {
+    if (!Array.isArray(modes) || modes.length === 0) {
+        return { safeModes: [], bestMode: null };
+    }
+
+    const safeModes = modes.map((mode) => {
+        const safetyScore = Number(mode.safetyScore);
+        const normalizedSafety = Number.isFinite(safetyScore) ? safetyScore : 5;
+        const lowZoneCount = Array.isArray(mode.lowSafetyZones) ? mode.lowSafetyZones.length : 0;
+        const isWalk = String(mode.mode).toLowerCase() === "walk";
+        const isCab = String(mode.mode).toLowerCase() === "cab";
+        const isMetro = String(mode.mode).toLowerCase() === "metro";
+        const baseScore = Number.isFinite(mode.personalizedScore)
+            ? mode.personalizedScore
+            : Number.isFinite(mode.baseScore)
+                ? mode.baseScore
+                : 0;
+
+        let safeModePenalty = (10 - normalizedSafety) * 12;
+        safeModePenalty += lowZoneCount * 10;
+
+        if (mode.nightRiskOnRoute) {
+            safeModePenalty += 18;
+        }
+
+        if (mode.isNightRoute && isWalk) {
+            safeModePenalty += 24;
+        }
+
+        if (lowZoneCount > 0 && isWalk) {
+            safeModePenalty += 20;
+        }
+
+        if (mode.isNightRoute && isCab) {
+            safeModePenalty -= 8;
+        }
+
+        if (isMetro) {
+            safeModePenalty -= 5;
+        }
+
+        return {
+            ...mode,
+            safeModePenalty,
+            safeModeScore: baseScore + safeModePenalty,
+            safeModeApplied: true,
+        };
+    });
+
+    let bestMode = null;
+    let bestScore = Infinity;
+
+    safeModes.forEach((mode) => {
+        if (mode.mode === "walk" && mode.lowSafetyZones?.length > 0) return;
+        if (mode.safeModeScore < bestScore) {
+            bestScore = mode.safeModeScore;
+            bestMode = mode.mode;
+        }
+    });
+
+    if (!bestMode) {
+        safeModes.forEach((mode) => {
+            if (mode.safeModeScore < bestScore) {
+                bestScore = mode.safeModeScore;
+                bestMode = mode.mode;
+            }
+        });
+    }
+
+    return { safeModes, bestMode };
 }

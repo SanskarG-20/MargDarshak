@@ -9,7 +9,7 @@
 import { evaluateMetro } from "./metroService.js";
 import { evaluateBus } from "./busService.js";
 import { evaluateTrain } from "./trainService.js";
-import { attachSafetyToModes } from "./safetyService.js";
+import { attachSafetyToModes, getSafeRouteOnly } from "./safetyService.js";
 import { attachEcoScores } from "./ecoScoreService.js";
 import { attachCrowdDensityToRoutes } from "./crowdService.js";
 import { applyPreferencesToRoutes } from "./personalizationService.js";
@@ -139,7 +139,8 @@ function buildModes(distanceKm) {
  * Compare Walk vs Cab vs Transit between two coordinates.
  * Uses ORS for real road distance; falls back to haversine if ORS fails.
  */
-export async function compareRoutes(startLat, startLng, endLat, endLng, preferences = null) {
+export async function compareRoutes(startLat, startLng, endLat, endLng, preferences = null, options = {}) {
+    const safeMode = !!options?.safeMode;
     let distanceKm;
     let geometry = [];
     let usingFallback = false;
@@ -272,15 +273,27 @@ export async function compareRoutes(startLat, startLng, endLat, endLng, preferen
         };
     });
 
-    const scoredModes = applyPreferencesToRoutes(scoredInput, preferences);
+    const personalizedModes = applyPreferencesToRoutes(scoredInput, preferences);
+    let scoredModes = personalizedModes;
 
-    // Final best option uses personalized score when available, baseline otherwise.
+    if (safeMode) {
+        const safeSelection = getSafeRouteOnly(personalizedModes);
+        if (safeSelection.safeModes?.length) {
+            scoredModes = safeSelection.safeModes;
+        }
+    }
+
+    // Final best option uses safe-mode score when enabled, personalized score when available, baseline otherwise.
     let bestMode = null;
     let bestScore = Infinity;
 
     scoredModes.forEach(function(m) {
         if (m.mode === "walk" && distanceKm > 2) return;
-        var score = Number.isFinite(m.personalizedScore) ? m.personalizedScore : m.baseScore;
+        var score = safeMode && Number.isFinite(m.safeModeScore)
+            ? m.safeModeScore
+            : Number.isFinite(m.personalizedScore)
+                ? m.personalizedScore
+                : m.baseScore;
         if (score < bestScore) {
             bestScore = score;
             bestMode = m.mode;
@@ -290,7 +303,11 @@ export async function compareRoutes(startLat, startLng, endLat, endLng, preferen
     // Fallback: if walk > 2km was the only option evaluated, re-evaluate all.
     if (!bestMode) {
         scoredModes.forEach(function(m) {
-            var score = Number.isFinite(m.personalizedScore) ? m.personalizedScore : m.baseScore;
+            var score = safeMode && Number.isFinite(m.safeModeScore)
+                ? m.safeModeScore
+                : Number.isFinite(m.personalizedScore)
+                    ? m.personalizedScore
+                    : m.baseScore;
             if (score < bestScore) {
                 bestScore = score;
                 bestMode = m.mode;
@@ -298,9 +315,20 @@ export async function compareRoutes(startLat, startLng, endLat, endLng, preferen
         });
     }
 
-    scoredModes.forEach(function(m) { m.isBest = m.mode === bestMode; });
+    scoredModes.forEach(function(m) {
+        m.isBest = m.mode === bestMode;
+        if (safeMode) {
+            m.safeModeApplied = true;
+        }
+    });
 
-    const result = { modes: scoredModes, distanceKm: distanceKm, usingFallback: usingFallback, error: false };
+    const result = {
+        modes: scoredModes,
+        distanceKm: distanceKm,
+        usingFallback: usingFallback,
+        error: false,
+        safeMode: safeMode,
+    };
 
     // Cache successful route result
     cacheRoute(result);

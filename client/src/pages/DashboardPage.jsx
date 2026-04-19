@@ -44,6 +44,7 @@ export default function DashboardPage() {
     const [pendingQuery, setPendingQuery] = useState(null);
     const [offline, setOffline] = useState(!navigator.onLine);
     const [usePreferences, setUsePreferences] = useState(true);
+    const [safeMode, setSafeMode] = useState(false);
     const [preferences, setPreferences] = useState(null);
     const [prefLoading, setPrefLoading] = useState(false);
     const [rerouteSuggestion, setRerouteSuggestion] = useState(null);
@@ -770,13 +771,14 @@ export default function DashboardPage() {
                     pendingQuery={pendingQuery}
                     usePreferences={usePreferences}
                     preferences={preferences}
+                    safeMode={safeMode}
                     onBehaviorTracked={refreshPreferences}
                 />
 
                 <div
                     style={{
                         marginTop: 10,
-                        marginBottom: 18,
+                        marginBottom: 10,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
@@ -826,6 +828,54 @@ export default function DashboardPage() {
                     </button>
                 </div>
 
+                <div
+                    style={{
+                        marginBottom: 18,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: 10,
+                        padding: "10px 12px",
+                        border: "1px solid rgba(239,68,68,.14)",
+                        background: safeMode ? "rgba(239,68,68,.05)" : "rgba(255,255,255,.02)",
+                    }}
+                >
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{
+                            fontFamily: "'Bebas Neue',sans-serif",
+                            fontSize: 14,
+                            letterSpacing: 1.5,
+                            color: safeMode ? "#f97316" : Y,
+                        }}>
+                            SAFETY FIRST MODE
+                        </span>
+                        <span style={{
+                            fontFamily: "'DM Sans',sans-serif",
+                            fontSize: 11,
+                            color: "rgba(255,255,255,.45)",
+                        }}>
+                            Prioritizes safer, well-lit routes and avoids low-safety night-risk areas even when travel time increases.
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setSafeMode((value) => !value)}
+                        style={{
+                            border: `1px solid ${safeMode ? "#f97316" : "rgba(255,255,255,.2)"}`,
+                            color: safeMode ? BK : "rgba(255,255,255,.7)",
+                            background: safeMode ? "#f97316" : "transparent",
+                            padding: "6px 12px",
+                            fontFamily: "'Bebas Neue',sans-serif",
+                            fontSize: 13,
+                            letterSpacing: 1.2,
+                            cursor: "pointer",
+                        }}
+                    >
+                        {safeMode ? "ON" : "OFF"}
+                    </button>
+                </div>
+
                 {/* Map */}
                 <MapView
                     userLocation={effectiveUserLocation}
@@ -843,6 +893,7 @@ export default function DashboardPage() {
                     onRouteCalculated={handleRouteCalculated}
                     usePreferences={usePreferences}
                     preferences={preferences}
+                    safeMode={safeMode}
                 />
 
                 {/* SOS Emergency Button */}

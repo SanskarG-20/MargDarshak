@@ -151,7 +151,12 @@ function buildPreferenceContext(preferences) {
         ". Use these as soft preferences and still optimize for practical route quality.";
 }
 
-export async function askMargDarshak(userMessage, chatHistory = [], userLocation = null, weatherContext = "", intentContext = "", preferences = null) {
+function buildSafetyModeContext(safeMode) {
+    if (!safeMode) return "";
+    return "\n\n[SAFE MODE]\nUser prioritizes safety over speed/cost. Favor well-lit, high-traffic, lower-risk routes even when they take longer or cost more. Avoid nightRisk areas and low-safety walking segments whenever possible.";
+}
+
+export async function askMargDarshak(userMessage, chatHistory = [], userLocation = null, weatherContext = "", intentContext = "", preferences = null, safeMode = false) {
     if (!GROQ_API_KEY || GROQ_API_KEY === "gsk_REPLACE_WITH_YOUR_GROQ_KEY") {
         return {
             error: true,
@@ -172,9 +177,10 @@ export async function askMargDarshak(userMessage, chatHistory = [], userLocation
     }
 
     const preferenceContext = buildPreferenceContext(preferences);
+    const safetyModeContext = buildSafetyModeContext(safeMode);
 
     const messages = [
-        { role: "system", content: SYSTEM_PROMPT + locationContext + weatherContext + intentContext + preferenceContext },
+        { role: "system", content: SYSTEM_PROMPT + locationContext + weatherContext + intentContext + preferenceContext + safetyModeContext },
         ...chatHistory.slice(-6).map((m) => ({
             role: m.role,
             content: m.content,

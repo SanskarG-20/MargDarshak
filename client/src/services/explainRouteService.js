@@ -185,6 +185,10 @@ export function explainBestRoute(bestOption, allOptions, weather = null, prefere
         }
     }
 
+    if (bestOption.safeModeApplied) {
+        reasons.unshift("Safety First Mode is active, so this route is preferred for lower risk even if it takes longer.");
+    }
+
     // ── 7. Personalization Context ─────────────────────────────────
     const preferredModes = preferences?.preferred_modes || null;
     const hasPersonalization =

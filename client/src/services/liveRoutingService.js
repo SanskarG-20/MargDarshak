@@ -166,6 +166,7 @@ function buildJourneyFromSuggestion(position, destination, result, trigger) {
         lastKnownPosition: { lat: position.lat, lng: position.lng },
         status: "active",
         rerouteReason: trigger,
+        safeMode: !!result?.safeMode,
     };
 }
 
@@ -259,7 +260,8 @@ export async function suggestBetterRoute(currentPosition, journey, preferences =
         currentPosition.lng,
         journey.destination.lat,
         journey.destination.lng,
-        preferences
+        preferences,
+        { safeMode: !!journey.safeMode }
     );
 
     if (comparison?.error || !comparison?.modes?.length) {

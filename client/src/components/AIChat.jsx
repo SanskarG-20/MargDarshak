@@ -78,6 +78,7 @@ export default function AIChat({
     pendingQuery,
     usePreferences = false,
     preferences = null,
+    safeMode = false,
     onBehaviorTracked,
 }) {
     const [messages, setMessages] = useState([]);
@@ -182,7 +183,7 @@ export default function AIChat({
         setLoading(true);
 
         const activePreferences = usePreferences ? preferences : null;
-        const result = await askMargDarshak(userMsg, messages, userLocation, weatherContext, intentPrompt, activePreferences);
+        const result = await askMargDarshak(userMsg, messages, userLocation, weatherContext, intentPrompt, activePreferences, safeMode);
         const aiContent = result.error
             ? result.summary
             : JSON.stringify(result);
@@ -231,7 +232,7 @@ export default function AIChat({
         setLoading(true);
 
         const activePreferences = usePreferences ? preferences : null;
-        const result = await askMargDarshak(userMsg, messages, userLocation, weatherContext, intentPrompt, activePreferences);
+        const result = await askMargDarshak(userMsg, messages, userLocation, weatherContext, intentPrompt, activePreferences, safeMode);
         const aiContent = result.error
             ? result.summary
             : JSON.stringify(result);
