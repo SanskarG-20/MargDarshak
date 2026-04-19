@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic } from "lucide-react";
 import { Y, BK, WH } from "../constants/theme";
 import { askMargDarshak } from "../services/aiService";
-import { saveAIHistory, getAIHistory, saveTrip } from "../services/supabaseClient";
+import { saveAIHistory, getAIHistory, deleteAIHistory, saveTrip } from "../services/supabaseClient";
 import { classifyIntent, buildIntentPrompt } from "../services/intentClassifier";
 import { explainBestRoute } from "../services/explainRouteService";
 import { calculateEcoScore } from "../services/ecoScoreService";
@@ -85,6 +85,7 @@ export default function AIChat({
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
+    const [clearingHistory, setClearingHistory] = useState(false);
     const [historyLoaded, setHistoryLoaded] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const chatEndRef = useRef(null);
@@ -263,6 +264,19 @@ export default function AIChat({
         }
     };
 
+    const handleClearHistory = async () => {
+        if (!dbUser?.id || loading || clearingHistory) return;
+
+        setClearingHistory(true);
+        const ok = await deleteAIHistory(dbUser.id);
+        if (ok) {
+            setMessages([]);
+            setInput("");
+            lastPendingRef.current = null;
+        }
+        setClearingHistory(false);
+    };
+
     return (
         <div style={{ marginTop: 32 }}>
             {/* Header */}
@@ -276,11 +290,11 @@ export default function AIChat({
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                }}
-            >
-                <span
-                    style={{
-                        width: 8,
+                    }}
+                >
+                    <span
+                        style={{
+                            width: 8,
                         height: 8,
                         borderRadius: "50%",
                         background: loading ? Y : "#22c55e",
@@ -290,9 +304,30 @@ export default function AIChat({
                             ? "pulse-ring 1s ease infinite"
                             : "pulse-ring 2s ease infinite",
                     }}
-                />
-                AI TRAVEL ASSISTANT
-            </div>
+                    />
+                    AI TRAVEL ASSISTANT
+                    <button
+                        type="button"
+                        onClick={handleClearHistory}
+                        disabled={!dbUser?.id || loading || clearingHistory || messages.length === 0}
+                        style={{
+                            marginLeft: "auto",
+                            padding: "6px 10px",
+                            fontFamily: "'Bebas Neue',sans-serif",
+                            fontSize: 11,
+                            letterSpacing: 1.4,
+                            color: clearingHistory ? BK : "#ef4444",
+                            background: clearingHistory ? "#ef4444" : "transparent",
+                            border: "1px solid rgba(239,68,68,.35)",
+                            cursor: !dbUser?.id || loading || clearingHistory || messages.length === 0
+                                ? "not-allowed"
+                                : "pointer",
+                            opacity: !dbUser?.id || loading || clearingHistory || messages.length === 0 ? 0.45 : 1,
+                        }}
+                    >
+                        {clearingHistory ? "CLEARING..." : "DELETE HISTORY"}
+                    </button>
+                </div>
 
             {/* Chat messages */}
             <div

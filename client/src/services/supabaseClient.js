@@ -195,6 +195,25 @@ export async function getAIHistory(userId, limit = 20) {
 }
 
 /**
+ * Delete all AI chat history for a user.
+ */
+export async function deleteAIHistory(userId) {
+    if (!supabase || !userId) return false;
+
+    const { error } = await supabase
+        .from("ai_history")
+        .delete()
+        .eq("user_id", userId);
+
+    if (error) {
+        console.error("[MargDarshak] Delete AI history failed:", error.message);
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Get all intents for a user, newest first.
  */
 export async function getIntents(userId) {
