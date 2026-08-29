@@ -122,14 +122,23 @@ end $$;
 
 -- 7. USER PREFERENCES
 create table if not exists user_preferences (
-  user_id          uuid references users(id) on delete cascade primary key,
-  preferred_modes  jsonb not null default '{}'::jsonb,
-  avg_budget       numeric(10,2),
-  safety_priority  numeric(4,3) not null default 0.5 check (safety_priority >= 0 and safety_priority <= 1),
-  eco_priority     numeric(4,3) not null default 0.5 check (eco_priority >= 0 and eco_priority <= 1),
-  last_updated     timestamptz default now()
+  user_id                   uuid references users(id) on delete cascade primary key,
+  preferred_modes           jsonb not null default '{}'::jsonb,
+  avg_budget                numeric(10,2),
+  safety_priority           numeric(4,3) not null default 0.5 check (safety_priority >= 0 and safety_priority <= 1),
+  eco_priority              numeric(4,3) not null default 0.5 check (eco_priority >= 0 and eco_priority <= 1),
+  preferred_time_of_travel  smallint check (preferred_time_of_travel is null or (preferred_time_of_travel between 0 and 23)),
+  last_updated              timestamptz default now()
 );
 create index if not exists idx_user_preferences_user_id on user_preferences (user_id);
+
+-- Add preferred_time_of_travel column if table already exists (safe to re-run)
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_name='user_preferences' and column_name='preferred_time_of_travel') then
+    alter table user_preferences add column preferred_time_of_travel smallint check (preferred_time_of_travel is null or (preferred_time_of_travel between 0 and 23));
+  end if;
+end $$;
 
 -- 8. SOS LOGS
 create table if not exists sos_logs (
