@@ -21,6 +21,21 @@ export const supabase = supabaseReady
 export { supabaseReady };
 
 /**
+ * Set the current user ID in the Supabase session for RLS policy enforcement.
+ * Must be called after user sync so RLS policies can identify the user.
+ */
+export async function setAppUser(userId) {
+    if (!supabase || !userId) return false;
+
+    const { error } = await supabase.rpc("set_app_user", { user_uuid: userId });
+    if (error) {
+        console.warn("[MargDarshak] Failed to set app user for RLS:", error.message);
+        return false;
+    }
+    return true;
+}
+
+/**
  * Upsert a Clerk user into the Supabase `users` table.
  * If clerk_id already exists, updates email/name/avatar.
  * If not, creates a new row.
@@ -52,6 +67,10 @@ export async function syncUserWithDatabase(userData) {
     }
 
     console.log("[MargDarshak] User synced to Supabase:", data.id);
+
+    // Set the user ID in the session for RLS policy enforcement
+    await setAppUser(data.id).catch(() => {});
+
     return data;
 }
 
