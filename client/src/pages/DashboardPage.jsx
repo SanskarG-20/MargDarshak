@@ -33,6 +33,7 @@ import RoutePanel from "../components/RoutePanel";
 import SOSButton from "../components/SOSButton";
 import OnboardingTour from "../components/OnboardingTour";
 import useOnboardingTour, { TOUR_STEPS } from "../hooks/useOnboardingTour";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 export default function DashboardPage() {
     const { user, isLoaded } = useUser();
@@ -848,29 +849,37 @@ export default function DashboardPage() {
                 )}
 
                 {/* Intent Input */}
-                <IntentInput dbUser={dbUser} />
+                <ErrorBoundary>
+                    <IntentInput dbUser={dbUser} />
+                </ErrorBoundary>
 
                 {/* Saved Routes */}
-                <SavedRoutes
-                    dbUser={dbUser}
-                    onSelectRoute={handleSavedRouteSelect}
-                />
+                <ErrorBoundary>
+                    <SavedRoutes
+                        dbUser={dbUser}
+                        onSelectRoute={handleSavedRouteSelect}
+                    />
+                </ErrorBoundary>
 
-                <TravelAnalyticsPanel dbUser={dbUser} />
+                <ErrorBoundary>
+                    <TravelAnalyticsPanel dbUser={dbUser} />
+                </ErrorBoundary>
 
                 {/* AI Chat */}
-                <AIChat
-                    dbUser={dbUser}
-                    onAIResponse={handleAIResponse}
-                    userLocation={aiLocationContext}
-                    weatherContext={weatherCtx}
-                    weather={weather}
-                    pendingQuery={pendingQuery}
-                    usePreferences={usePreferences}
-                    preferences={preferences}
-                    safeMode={safeMode}
-                    onBehaviorTracked={refreshPreferences}
-                />
+                <ErrorBoundary>
+                    <AIChat
+                        dbUser={dbUser}
+                        onAIResponse={handleAIResponse}
+                        userLocation={aiLocationContext}
+                        weatherContext={weatherCtx}
+                        weather={weather}
+                        pendingQuery={pendingQuery}
+                        usePreferences={usePreferences}
+                        preferences={preferences}
+                        safeMode={safeMode}
+                        onBehaviorTracked={refreshPreferences}
+                    />
+                </ErrorBoundary>
 
                 <div
                     style={{
@@ -974,36 +983,44 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Map */}
-                <MapView
-                    userLocation={effectiveUserLocation}
-                    markers={mapMarkers}
-                    routeGeometry={routeGeometry}
-                    onMapReady={() => setMapActive(true)}
-                    showAQI={showAQI}
-                    onAQIToggle={() => setShowAQI((v) => !v)}
-                />
+                <ErrorBoundary>
+                    <MapView
+                        userLocation={effectiveUserLocation}
+                        markers={mapMarkers}
+                        routeGeometry={routeGeometry}
+                        onMapReady={() => setMapActive(true)}
+                        showAQI={showAQI}
+                        onAQIToggle={() => setShowAQI((v) => !v)}
+                    />
+                </ErrorBoundary>
 
                 {/* Route Intelligence */}
-                <RoutePanel
-                    userLocation={effectiveUserLocation}
-                    markers={mapMarkers}
-                    onRouteCalculated={handleRouteCalculated}
-                    usePreferences={usePreferences}
-                    preferences={preferences}
-                    safeMode={safeMode}
-                />
+                <ErrorBoundary>
+                    <RoutePanel
+                        userLocation={effectiveUserLocation}
+                        markers={mapMarkers}
+                        onRouteCalculated={handleRouteCalculated}
+                        usePreferences={usePreferences}
+                        preferences={preferences}
+                        safeMode={safeMode}
+                    />
+                </ErrorBoundary>
 
                 {/* SOS Emergency Button */}
-                <SOSButton dbUser={dbUser} userLocation={effectiveUserLocation} />
+                <ErrorBoundary>
+                    <SOSButton dbUser={dbUser} userLocation={effectiveUserLocation} />
+                </ErrorBoundary>
 
-                <ContinuousCopilotPanel
-                    visible={journeyActive}
-                    journeyActive={journeyActive}
-                    copilotEnabled={copilotEnabled}
-                    suggestion={copilotSuggestion}
-                    onToggle={handleToggleCopilot}
-                    onDismiss={handleDismissCopilot}
-                />
+                <ErrorBoundary>
+                    <ContinuousCopilotPanel
+                        visible={journeyActive}
+                        journeyActive={journeyActive}
+                        copilotEnabled={copilotEnabled}
+                        suggestion={copilotSuggestion}
+                        onToggle={handleToggleCopilot}
+                        onDismiss={handleDismissCopilot}
+                    />
+                </ErrorBoundary>
 
                 {rerouteSuggestion && (
                     <div
