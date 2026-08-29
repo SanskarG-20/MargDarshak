@@ -6,6 +6,8 @@
  * Extendable to other cities.
  */
 
+import { haversineKm } from "../utils/geo";
+
 // ── Mumbai BEST Bus Stops Dataset ────────────────────────────────────────────
 // Major stops across Mumbai with real coordinates.
 // Organized by area clusters for efficient lookup.
@@ -147,18 +149,6 @@ const MUMBAI_BUS_ROUTES = [
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Haversine distance in km */
-function haversineKm(lat1, lng1, lat2, lng2) {
-    var R = 6371;
-    var dLat = (lat2 - lat1) * Math.PI / 180;
-    var dLng = (lng2 - lng1) * Math.PI / 180;
-    var a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 /**
  * Find the N nearest bus stops to given coordinates.

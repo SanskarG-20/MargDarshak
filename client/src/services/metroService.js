@@ -6,6 +6,8 @@
  * Extendable to Delhi, Bangalore, Chennai, Kolkata, Hyderabad.
  */
 
+import { haversineKm } from "../utils/geo";
+
 // ── Mumbai Metro Dataset ────────────────────────────────────────────────────
 
 const MUMBAI_METRO = {
@@ -126,18 +128,6 @@ const MUMBAI_METRO = {
 const METRO_CITIES = [MUMBAI_METRO];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Haversine distance in km between two lat/lng points */
-function haversineKm(lat1, lng1, lat2, lng2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 /**
  * Find the nearest metro station to given coordinates across all lines.

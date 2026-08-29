@@ -1,30 +1,4 @@
-function toRadians(value) {
-    return (value * Math.PI) / 180;
-}
-
-function haversineMeters(a, b) {
-    if (
-        !Number.isFinite(a?.lat) ||
-        !Number.isFinite(a?.lng) ||
-        !Number.isFinite(b?.lat) ||
-        !Number.isFinite(b?.lng)
-    ) {
-        return Infinity;
-    }
-
-    const earthRadius = 6371000;
-    const dLat = toRadians(b.lat - a.lat);
-    const dLng = toRadians(b.lng - a.lng);
-    const lat1 = toRadians(a.lat);
-    const lat2 = toRadians(b.lat);
-
-    const x =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1) * Math.cos(lat2) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-
-    return earthRadius * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-}
+import { haversineMeters } from "../utils/geo";
 
 function getUrgency(distanceRemainingMeters, delayMinutes, deviationMeters) {
     if (deviationMeters > 300 || delayMinutes >= 10 || distanceRemainingMeters <= 800) {

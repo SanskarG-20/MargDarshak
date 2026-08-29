@@ -14,6 +14,7 @@ import { attachEcoScores } from "./ecoScoreService.js";
 import { attachCrowdDensityToRoutes } from "./crowdService.js";
 import { applyPreferencesToRoutes } from "./personalizationService.js";
 import { cacheRoute, getCachedRoute, setOfflineFlag } from "../utils/offlineCache.js";
+import { haversineKm } from "../utils/geo";
 
 const ORS_API_KEY = import.meta.env.VITE_ORS_API_KEY;
 const ORS_URL = "https://api.openrouteservice.org/v2/directions";
@@ -94,20 +95,6 @@ async function fetchDrivingRoute(startLat, startLng, endLat, endLng) {
         // Convert GeoJSON [lng, lat] -> Leaflet [lat, lng]
         geometry: coords ? coords.map(function(c) { return [c[1], c[0]]; }) : [],
     };
-}
-
-/**
- * Fallback: straight-line (haversine) distance when ORS is unavailable.
- */
-function haversineKm(lat1, lng1, lat2, lng2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 /**
